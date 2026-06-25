@@ -17,53 +17,16 @@ export default function Home() {
       <ScrollEffects />
       <Header />
 
-      {/* SECTION 1: Hero */}
       <Hero />
-    
-      {/* SECTION 2: Features */}
-      <div className="full-page-section">
-        <Features />
-      </div>
-
-      {/* Section 3: Functions */}
-      <div className="full-page-section">
-        <Functions titleVariant="rules" />
-      </div>
-
-      {/* Knowledge */}
-      <div className="full-page-section">
-        <Functions titleVariant="knowledge" />
-      </div>
-
-      {/* Tasks */}
-      <div className="full-page-section">
-        <Functions titleVariant="tasks" />
-      </div>
-
-      {/* Section 4: Advantages */}
-      <div className="full-page-section">
-        <Advantages />
-      </div>
-
-      {/* Section 5: Evaluation */}
-      <div className="full-page-section evaluation-section-gap">
-        <Evaluation />
-      </div>
-
-      {/* Section 6: Dashboard */}
-      <div className="full-page-section dashboard-section">
-        <Dashboard />
-      </div>
-
-      {/* Section 7: Developer Ecosystem */}
-      <div className="full-page-section">
-        <DevSection />
-      </div>
-
-      {/* Footer */}
-      <div style={{ scrollSnapAlign: 'start' }}>
-        <Footer />
-      </div>
+      <Features />
+      <Functions titleVariant="rules" />
+      <Functions titleVariant="knowledge" />
+      <Functions titleVariant="tasks" />
+      <Advantages />
+      <Evaluation />
+      <Dashboard />
+      <DevSection />
+      <Footer />
 
       <ScrollTopButton />
     </>

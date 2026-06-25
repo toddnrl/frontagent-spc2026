@@ -1,4 +1,4 @@
-import styles from './Section2.module.css'
+import styles from './Fourgrid.module.css'
 
 export default function Section2() {
   return (
