@@ -1,4 +1,4 @@
-import styles from './Advantages.module.css'
+import { pageSectionShell } from './sectionLayout'
 
 const ITEMS = [
   {
@@ -52,23 +52,39 @@ const ITEMS = [
   },
 ]
 
+const sectionClass =
+  'mx-auto flex w-full max-w-[1400px] flex-col justify-center bg-transparent px-10 py-12 text-center max-[860px]:px-5 max-[640px]:px-5'
+const titleClass =
+  'mx-auto my-3.5 w-full text-center text-4xl font-extrabold leading-tight tracking-[-0.04em] text-[#0f1118] max-[900px]:text-[28px]'
+const leadClass =
+  'mx-auto mb-[30px] w-full max-w-[660px] text-center text-[17px] leading-[1.75] text-[#5b6b8c]'
+
 export default function Advantages() {
   return (
-    <div className={`${styles.advantages} section`} id="advantages">
-      <h2 className="stitle">상담 80%를 해결하는 AI가 가능한 이유</h2>
-      <p className="slead" style={{ marginBottom: '30px' }}>
+    <section className={pageSectionShell} id="advantages">
+    <div className={sectionClass}>
+      <h2 className={titleClass}>상담 80%를 해결하는 AI가 가능한 이유</h2>
+      <p className={leadClass}>
         채널톡 AI 상담사가 고객에게 제대로 답변할 수 있는 이유, 복잡하지 않습니다.<br />
         올바른 규칙, 구조화된 지식, 직접 실행 가능한 태스크, 개선 제안 이 네 가지면 충분합니다.
       </p>
-      <div className={styles.grid}>
+      <div className="mx-auto grid w-full max-w-[1200px] grid-cols-4 gap-[clamp(16px,2vw,28px)] text-left max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1 max-[640px]:gap-[14px]">
         {ITEMS.map(item => (
-          <div key={item.key} className={styles.card}>
-            <div className={styles.icon}>{item.icon}</div>
-            <div className={styles.cardTitle}>{item.title} <span className={styles.arrow}>›</span></div>
-            <div className={styles.cardDesc}>{item.desc}</div>
+          <div
+            key={item.key}
+            className="flex min-w-0 flex-col gap-2.5 rounded-2xl border border-[rgba(0,0,0,0.1)] p-[clamp(18px,2vw,24px)]"
+          >
+            <div className="mb-0.5 flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border border-[rgba(0,0,0,0.1)] bg-white text-[var(--ink)]">
+              {item.icon}
+            </div>
+            <div className="flex items-center gap-1 text-base font-bold text-[var(--ink)]">
+              {item.title} <span className="text-lg font-normal text-[var(--ink)]">›</span>
+            </div>
+            <div className="text-[13.5px] leading-[1.65] text-[var(--muted)]">{item.desc}</div>
           </div>
         ))}
       </div>
     </div>
+    </section>
   )
 }
