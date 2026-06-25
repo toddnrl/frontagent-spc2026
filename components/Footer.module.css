@@ -1,0 +1,71 @@
+/* ── Footer ── */
+.ft {
+  background: linear-gradient(160deg, #0d1117, #131925) !important;
+  color: #aeb4c2;
+  padding: 64px 0 36px !important;
+  font-size: 14px;
+}
+
+.ftTop {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 38px;
+}
+
+.ftBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 19px !important;
+  color: #fff;
+  margin-bottom: 14px;
+}
+
+.ftLogo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ft p {
+  color: #8a90a0;
+  max-width: 280px;
+  font-size: 13.5px !important;
+  line-height: 1.75 !important;
+}
+
+.ftCol h5 {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  color: #a0aec0 !important;
+  margin-bottom: 14px;
+}
+.ftCol a {
+  display: block;
+  padding: 5px 0;
+  font-size: 14px !important;
+  color: #718096 !important;
+  transition: color .15s !important;
+}
+.ftCol a:hover { color: #e2e8f0 !important; }
+
+.ftBottom {
+  border-top: 1px solid rgba(255,255,255,.08) !important;
+  padding-top: 22px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px !important;
+  color: #4a5568 !important;
+}
+.ftBottom a { color: #9aa1b3; }
+.ftBottom a:hover { color: #e2e8f0; }
+
+@media (max-width: 900px) {
+  .ftTop { grid-template-columns: 1fr; gap: 26px; }
+}

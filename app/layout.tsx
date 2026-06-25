@@ -1,19 +1,24 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: "Front Agent",
-  description: "고객 문의 응대와 예약 관리를 자동화하는 AI 운영 플랫폼",
-};
+  title: 'Front Agent · AI 고객 응대 & 예약 자동화',
+  description: 'AI 고객 응대 & 예약 자동화 플랫폼',
+}
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="ko" className="h-full antialiased">
-      <body className="min-h-full">{children}</body>
+    <html lang="ko">
+      <head>
+        <meta charSet="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+      </head>
+      <body>{children}</body>
     </html>
-  );
+  )
 }
