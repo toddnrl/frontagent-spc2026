@@ -1,0 +1,302 @@
+/* ══════════════════════════════
+   SECTION 2 – 필요할 때
+══════════════════════════════ */
+
+/* Top grid */
+.s2TopGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.s2LeftCard {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 28px;
+  border: 1px solid rgba(0,0,0,.07) !important;
+  box-shadow: 0 2px 12px -2px rgba(22,25,31,.07), 0 0 0 0.5px rgba(0,0,0,.04) !important;
+  transition: box-shadow .2s !important;
+  display: flex;
+  flex-direction: column;
+}
+.s2LeftCard:hover {
+  box-shadow: 0 8px 32px -8px rgba(22,25,31,.14) !important;
+}
+
+.s2CardLabel {
+  font-size: 12px; font-weight: 700; color: var(--gray-text);
+  margin-bottom: 8px;
+}
+
+.s2CardTitle {
+  font-size: 20px; font-weight: 800; line-height: 1.35;
+  color: var(--black); margin-bottom: 16px;
+}
+
+.s2ArrowBtn {
+  width: 36px; height: 36px;
+  background: var(--black); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 16px; cursor: pointer; border: none;
+  margin-bottom: 24px;
+}
+
+/* Quick action menu */
+.quickMenu {
+  background: #f4f6fb !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(0,0,0,.05) !important;
+  padding: 16px;
+  margin-top: auto;
+}
+.quickMenuTitle {
+  font-size: 13px; font-weight: 700; color: #555;
+  margin-bottom: 12px;
+}
+.quickMenuItem {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px !important;
+  font-size: 13.5px !important; color: #333; cursor: pointer;
+  margin-bottom: 4px; background: #fff;
+  transition: background .12s !important;
+}
+.quickMenuItem:hover { background: #e8edf7 !important; }
+.qmIcon { font-size: 15px; width: 22px; text-align: center; }
+
+/* Right chat panel */
+.s2RightCard {
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(0,0,0,.07) !important;
+  box-shadow: 0 2px 12px -2px rgba(22,25,31,.07), 0 0 0 0.5px rgba(0,0,0,.04) !important;
+  transition: box-shadow .2s !important;
+  overflow: hidden;
+  position: relative;
+}
+.s2RightCard:hover {
+  box-shadow: 0 8px 32px -8px rgba(22,25,31,.14) !important;
+}
+
+.s2RightHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--gray-border);
+  font-size: 13px; font-weight: 700;
+}
+.s2HeaderActions {
+  display: flex; gap: 10px; color: #bbb; font-size: 14px; cursor: pointer;
+}
+
+.s2ChatBody { padding: 20px 18px; }
+
+.s2UserMsg {
+  background: linear-gradient(135deg, #1a2033, #2a3050) !important;
+  color: #fff;
+  border-radius: 16px 16px 4px 16px !important;
+  padding: 11px 14px;
+  font-size: 13px;
+  margin-left: 60px;
+  margin-bottom: 14px;
+  line-height: 1.6 !important;
+}
+
+.s2BotMsg {
+  display: flex; gap: 10px; margin-bottom: 14px;
+}
+.s2BotAvatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, #ffd966, #f5a623) !important;
+  box-shadow: 0 2px 8px rgba(245,166,35,.3) !important;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.s2BotBubble {
+  background: #f0f4ff !important;
+  border-radius: 6px 16px 16px 16px !important;
+  padding: 11px 14px; font-size: 13px; line-height: 1.6; color: #333;
+  flex: 1;
+}
+.check { color: var(--orange); font-weight: 700; display: block; margin-bottom: 3px; }
+.muted { color: #999; font-size: 12px; }
+
+.s2ReactionBar {
+  display: flex; gap: 12px; padding: 8px 18px 14px;
+  color: #bbb; font-size: 13px;
+}
+.s2ReactionBar span { cursor: pointer; }
+.s2ReactionBar span:hover { color: #888; }
+
+/* Bottom grid */
+.s2BottomGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Search card */
+.s2SearchCard {
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(0,0,0,.07) !important;
+  box-shadow: 0 2px 12px -2px rgba(22,25,31,.07), 0 0 0 0.5px rgba(0,0,0,.04) !important;
+  transition: box-shadow .2s !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.s2SearchCard:hover {
+  box-shadow: 0 8px 32px -8px rgba(22,25,31,.14) !important;
+}
+
+.s2SearchHeader {
+  padding: 24px 24px 0;
+}
+.s2SearchLabel { font-size: 12px; font-weight: 700; color: var(--gray-text); margin-bottom: 6px; }
+.s2SearchTitle {
+  font-size: 20px; font-weight: 800; color: var(--black);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.s2SearchBody { padding: 20px 24px 0; flex: 1; }
+
+.searchTag {
+  display: inline-block; background: var(--gray-bg); border-radius: 6px;
+  padding: 3px 9px; font-size: 11.5px; color: #888; margin-bottom: 12px;
+}
+.searchMeta { font-size: 12px; color: #888; margin-bottom: 8px; }
+.searchSummary { font-size: 12px; color: #555; margin-bottom: 12px; line-height: 1.6; }
+
+.searchResultTitle { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #111; }
+.searchSubtitle    { font-size: 12px; font-weight: 700; color: #555; margin-bottom: 8px; }
+.searchList        { padding-left: 0; list-style: none; }
+.searchList li {
+  font-size: 12px; color: #555; padding: 3px 0; line-height: 1.55;
+  padding-left: 12px; position: relative;
+}
+.searchList li::before {
+  content: '·'; position: absolute; left: 0; color: #bbb;
+}
+
+/* Integrations row */
+.integrationsRow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 18px 24px;
+  border-top: 1px solid var(--gray-border);
+  margin-top: auto;
+}
+.intIcon {
+  width: 32px; height: 32px;
+  border-radius: 10px !important;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  border: 1px solid var(--gray-border);
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08) !important;
+  transition: transform .12s !important;
+}
+.intIcon:hover { transform: translateY(-1px) !important; }
+.intPlus {
+  width: 32px; height: 32px;
+  border-radius: 10px !important;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: #bbb;
+  border: 1.5px dashed #ddd; cursor: pointer;
+}
+
+/* Notes card */
+.s2NotesCard {
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(0,0,0,.07) !important;
+  box-shadow: 0 2px 12px -2px rgba(22,25,31,.07), 0 0 0 0.5px rgba(0,0,0,.04) !important;
+  transition: box-shadow .2s !important;
+  overflow: hidden;
+}
+.s2NotesCard:hover {
+  box-shadow: 0 8px 32px -8px rgba(22,25,31,.14) !important;
+}
+
+.s2NotesHeader {
+  padding: 24px 24px 0;
+}
+.s2NotesLabel { font-size: 12px; font-weight: 700; color: var(--gray-text); margin-bottom: 6px; }
+.s2NotesTitle {
+  font-size: 20px; font-weight: 800; color: var(--black);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* Note doc */
+.noteDoc {
+  margin: 16px 24px 0;
+  background: #f8f9fc !important;
+  border: 1px solid rgba(0,0,0,.06) !important;
+  border-radius: 16px !important;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.noteDocHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.noteDocTitle {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 800; color: #111;
+}
+.noteDocDate { font-size: 11px; color: #bbb; }
+
+.noteDocActions {
+  display: flex; gap: 6px;
+}
+.noteDocAction {
+  padding: 3px 10px; border-radius: 8px !important; font-size: 11px; font-weight: 600;
+  border: 1px solid #e0ddd8; background: #fff; cursor: pointer; color: #555;
+}
+.noteActionRed    { background: #ffeaea; color: #e85656; border-color: #fbc6c6; }
+.noteActionGreen  { background: #e8fff0; color: #22a355; border-color: #c6f0d8; }
+
+.noteSectionTitle { font-size: 13px; font-weight: 700; color: #111; margin-bottom: 6px; }
+.noteBodyText     { font-size: 12px; color: #555; line-height: 1.7; margin-bottom: 12px; }
+
+.noteChecklist { list-style: none; }
+.noteChecklist li {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: #444; padding: 3px 0;
+}
+.noteCheck { color: #22a355; font-size: 12px; }
+.noteDash  { color: #bbb; font-size: 12px; }
+
+.notePhotoWrap {
+  position: relative; margin-top: 12px;
+  border-radius: 10px; overflow: hidden;
+  background: linear-gradient(135deg, #f0c8a0, #d09060);
+  height: 80px; display: flex; align-items: center; justify-content: center;
+}
+.notePhotoPlaceholder {
+  display: flex; gap: 8px;
+}
+.notePhotoFace {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: #c08060; border: 2px solid rgba(255,255,255,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.noteCallIcon {
+  position: absolute; bottom: 8px; right: 8px;
+  display: flex; gap: 6px;
+}
+.callBtn {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+}
+.callRed   { background: #e85656; color: #fff; }
+.callGreen { background: #22a355; color: #fff; }
+
+/* Responsive */
+@media (max-width: 860px) {
+  .s2TopGrid,
+  .s2BottomGrid { grid-template-columns: 1fr; }
+}
