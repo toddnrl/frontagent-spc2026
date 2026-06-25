@@ -16,16 +16,16 @@ const RedisIcon = () => (
 const SupabaseIcon = () => (
   <svg width="40" height="40" viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint0_linear)"/>
-    <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint1_linear)" fill-opacity="0.2"/>
+    <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint1_linear)" fillOpacity="0.2"/>
     <path d="M45.317 2.07103C48.1765 -1.53037 53.9745 0.442937 54.0434 5.041L54.4849 72.2922H9.83113C1.64038 72.2922 -2.92775 62.8321 2.1655 56.4175L45.317 2.07103Z" fill="#3ECF8E"/>
   <defs>
     <linearGradient id="paint0_linear" x1="53.9738" y1="54.974" x2="94.1635" y2="71.8295" gradientUnits="userSpaceOnUse">
-    <stop stop-color="#249361"/>
-    <stop offset="1" stop-color="#3ECF8E"/>
+    <stop stopColor="#249361"/>
+    <stop offset="1" stopColor="#3ECF8E"/>
     </linearGradient>
     <linearGradient id="paint1_linear" x1="36.1558" y1="30.578" x2="54.4844" y2="65.0806" gradientUnits="userSpaceOnUse">
     <stop/>
-    <stop offset="1" stop-opacity="0"/>
+    <stop offset="1" stopOpacity="0"/>
     </linearGradient>
     </defs>
   </svg>
@@ -52,36 +52,67 @@ const TerminalIcon = () => (
     <path d="M30 40 L46 40" stroke="white" strokeWidth="4.5" strokeLinecap="round" />
   </svg>
 )
-import styles from './Hero.module.css'
+import type { ReactElement, ReactNode } from 'react'
 import HeroGradient from './HeroGradient'
 
+const avatarClass =
+  'flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full text-[30px] leading-[1]'
+const heroTextAreaClass =
+  'mx-auto flex min-h-0 w-full max-w-[1400px] items-center justify-center gap-0 px-[24px]'
+const heroCenterClass =
+  "flex w-full items-center justify-center bg-white [font-family:'Pretendard',-apple-system,sans-serif]"
+const heroInnerClass =
+  'mt-[120px] flex w-full min-w-0 max-w-[1100px] flex-col items-center text-center'
+const headlineClass =
+  'm-0 flex w-full max-w-full flex-col items-center gap-[4px] text-[clamp(42px,6vw,76px)] font-extrabold leading-[1.14] tracking-[-0.03em] text-[#191919] [overflow-wrap:break-word] [word-break:keep-all] max-[600px]:text-[40px] max-[600px]:leading-[1.12]'
+const headlineSpanClass = 'block max-w-full py-[0.04em]'
+const headlineLine2Class =
+  'mt-[6px] inline-flex flex-wrap items-center justify-center gap-0 text-[clamp(38px,5.2vw,65px)] leading-[1.12] max-[600px]:text-[36px]'
+const headlinePillClass =
+  'mx-[14px] inline-flex items-center justify-center gap-[10px] rounded-full bg-[#d3e4f7] px-[0.4em] pt-[0.06em] pb-[0.1em] align-middle font-extrabold leading-[1.08] text-[#191919] max-[600px]:mt-[8px]'
+const subheadlineClass =
+  'mt-[28px] mb-0 text-[20px] font-medium tracking-[-0.01em] text-[#5c5c5c] max-[600px]:text-[16px]'
+const uiGradientInnerClass = 'rounded-[42px]'
+const uiPreviewWrapClass = 'flex w-full max-w-[700px] flex-col items-center gap-[22px]'
+const urlBarClass =
+  'flex w-[86%] items-center justify-center gap-[10px] rounded-[26px] border border-[rgba(255,255,255,0.6)] bg-[rgba(255,255,255,0.45)] px-[28px] py-[20px] shadow-[0_4px_18px_rgba(80,120,60,0.12)] backdrop-blur-[8px]'
 
 type AvatarEntry =
-  | { label: string; border: string; bg: string; Icon: IconType; color: string; custom?: never; imgSrc?: never }
-  | { label: string; border: string; bg: string; custom: () => JSX.Element; Icon?: never; color?: never; imgSrc?: never }
-  | { label: string; border: string; bg: string; imgSrc: string; Icon?: never; color?: never; custom?: never }
+  | { label: string; className: string; Icon: IconType; color: string; custom?: never; imgSrc?: never }
+  | { label: string; className: string; custom: () => ReactElement; Icon?: never; color?: never; imgSrc?: never }
+  | { label: string; className: string; imgSrc: string; Icon?: never; color?: never; custom?: never }
 
 export default function Hero() {
   return (
-    <section className={styles.hero} id="features">
-      <div className={styles.heroTextArea}>
-      </div>
+    <section
+      className="box-border flex w-full flex-col items-center justify-start bg-white p-0 pb-16 [scroll-snap-align:none]"
+      id="features"
+    >
+      <style>
+        {`
+          @keyframes pillDotBlink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.25; transform: scale(0.8); }
+          }
+        `}
+      </style>
+      <div className={heroTextAreaClass} />
 
-      <div className={styles.heroCenter}>
-        <div className={styles.heroInner}>
+      <div className={heroCenterClass}>
+        <div className={heroInnerClass}>
           {/* Avatar row */}
-          <div className={styles.avatarRow}>
+          <div className="mb-8 flex flex-wrap justify-center gap-2.5">
             {([
-              { label: 'ChatGPT',    border: '#10a37f', bg: '#ffffff', Icon: SiOpenai,    color: '#0d0d0d' },
-              { label: 'Claude',     border: '#d97706', bg: '#fdf6ee', Icon: SiClaude,    color: '#d97706' },
-              { label: 'Codex',      border: 'none',     bg: 'transparent', custom: TerminalIcon },
-              { label: 'Supabase',   border: '#3ecf8e', bg: '#1c1c1c', custom: SupabaseIcon },
-              { label: 'Redis',      border: '#dc382d', bg: '#ffffff', custom: RedisIcon },
-              { label: 'PostgreSQL', border: '#336791', bg: '#ffffff', custom: PostgreSQLIcon },
+              { label: 'ChatGPT',    className: 'border-[3px] border-[#10a37f] bg-white', Icon: SiOpenai,    color: '#0d0d0d' },
+              { label: 'Claude',     className: 'border-[3px] border-[#d97706] bg-[#fdf6ee]', Icon: SiClaude,    color: '#d97706' },
+              { label: 'Codex',      className: 'bg-transparent', custom: TerminalIcon },
+              { label: 'Supabase',   className: 'border-[3px] border-[#3ecf8e] bg-[#1c1c1c]', custom: SupabaseIcon },
+              { label: 'Redis',      className: 'border-[3px] border-[#dc382d] bg-white', custom: RedisIcon },
+              { label: 'PostgreSQL', className: 'border-[3px] border-[#336791] bg-white', custom: PostgreSQLIcon },
             ] as AvatarEntry[]).map((a, i) => {
-              let icon: React.ReactNode
+              let icon: ReactNode
               if (a.imgSrc) {
-                icon = <img src={a.imgSrc} alt={a.label} style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                icon = <img className="h-10 w-10 object-contain" src={a.imgSrc} alt={a.label} />
               } else if (a.custom) {
                 const C = a.custom
                 icon = <C />
@@ -92,8 +123,7 @@ export default function Hero() {
               return (
                 <div
                   key={i}
-                  className={styles.avatar}
-                  style={{ border: `3px solid ${a.border}`, background: a.bg }}
+                  className={`${avatarClass} ${a.className}`}
                 >
                   {icon}
                 </div>
@@ -102,71 +132,72 @@ export default function Hero() {
           </div>
 
           {/* Headline */}
-          <h1 className={styles.headline}>
-            <span>바쁜 일상 속, 놓치는 예약 없이</span>
-            <span className={styles.headlineLine2}>
+          <h1 className={headlineClass}>
+            <span className={headlineSpanClass}>바쁜 일상 속, 놓치는 예약 없이</span>
+            <span className={headlineLine2Class}>
               상담 에이전트
-              <span className={styles.headlinePill}>
-                <span className={styles.pillDot} />
+              <span className={headlinePillClass}>
+                <span className="h-[22px] w-[22px] flex-none rounded-full bg-[#2383e2] [animation:pillDotBlink_1.4s_ease-in-out_infinite]" />
                   Call bee
                 </span>
             </span>
           </h1>
 
-          <p className={styles.subheadline}>
+          <p className={subheadlineClass}>
             챗봇과 통화로, 실제 비즈니스 환경에서 필요한 기능들을 경험하세요.
           </p>
 
           {/* Product UI preview */}
           <HeroGradient>
-            <div className={styles.uiGradientInner}>
-              <div className={styles.uiPreviewWrap}>
+            <div className={uiGradientInnerClass}>
+              <div className={uiPreviewWrapClass}>
                 {/* URL bar */}
-                <div className={styles.urlBar}>
+                <div className={urlBarClass}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a4a4a" strokeWidth="1.6">
                     <circle cx="12" cy="12" r="9"/>
                     <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>
                   </svg>
-                  <span className={styles.urlText}>callbee.com</span>
+                  <span className="text-[19px] font-semibold text-[#2e2e2e]">callbee.com</span>
                 </div>
 
                 {/* Browser mockup */}
-                <div className={styles.browserMockup}>
-                  <div className={styles.browserInner}>
+                <div className="w-full overflow-hidden rounded-t-[38px] border-[7px] border-b-0 border-[#1c2535] bg-white pb-2 shadow-[0_20px_50px_rgba(40,60,30,0.22)]">
+                  <div className="px-[18px] pt-[18px] pb-0">
                     {/* Product image placeholder */}
-                    <div className={styles.productImageWrap}>
-                      <div className={styles.productImagePlaceholder}>
-                        <span className={styles.productImageLabel}>제품 사진</span>
+                    <div className="relative aspect-[4/3.4] overflow-hidden rounded-2xl bg-[repeating-linear-gradient(135deg,#d9dde2_0_12px,#cfd4da_12px_24px)]">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="rounded bg-[rgba(255,255,255,0.7)] px-2 py-1 font-mono text-xs text-[#7b818a]">제품 사진</span>
                       </div>
-                      <div className={styles.productOverlay}>
-                        <div className={styles.productName}>그레이 집업</div>
-                        <div className={styles.productPrice}>KRW 79,900</div>
+                      <div className="absolute bottom-4 left-5 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]">
+                        <div className="text-lg font-bold text-white">그레이 집업</div>
+                        <div className="mt-0.5 text-[13px] font-medium text-[rgba(255,255,255,0.85)]">KRW 79,900</div>
                       </div>
                     </div>
 
                     {/* User message */}
-                    <div className={styles.userMsgWrap}>
-                      <div className={styles.userMsg}>이 제품은 건조기 돌려도 되나요?</div>
+                    <div className="flex justify-end px-[18px] pt-[18px] pb-0">
+                      <div className="max-w-[80%] rounded-[18px_18px_4px_18px] bg-[#eef0f2] px-4 py-3 text-[15px] font-medium text-[#2e2e2e]">이 제품은 건조기 돌려도 되나요?</div>
                     </div>
 
                     {/* AI reply */}
-                    <div className={styles.aiReplyWrap}>
-                      <div className={styles.aiLabel}>
-                        <span className={styles.aiTag}>Callbee</span>
-                        <span className={styles.aiName}>AI 에이전트</span>
+                    <div className="px-5 pt-[22px] pb-0">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="rounded-[5px] border border-[#c7ccd2] px-1.5 py-0.5 text-[11px] font-bold text-[#1c2535]">Callbee</span>
+                        <span className="text-sm font-bold text-[#1c2535]">AI 에이전트</span>
                       </div>
-                      <p className={styles.aiText}>
+                      <p className="m-0 text-base font-medium leading-[1.7] text-[#2e2e2e]">
                         세탁은 세탁망에 넣어 찬물로 세탁해 주세요.<br/>
                         소재 특성상 열에 약해 건조기 사용은 지양하고,<br/>
                         그늘에서 건조해 주시면 오래 입으실 수 있습니다!
                       </p>
-                      <button className={styles.aiBtn}>세탁 방법 자세히 보기</button>
+                      <button className="mt-[18px] rounded-[10px] bg-[#c9d6f0] px-4 py-[11px] text-sm font-semibold text-[#2a3a66] transition-colors duration-150 hover:bg-[#b9c9ec]">세탁 방법 자세히 보기</button>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </HeroGradient>
+          <div id="hero-end" className="h-0 w-full" aria-hidden="true" />
         </div>
       </div>
     </section>
