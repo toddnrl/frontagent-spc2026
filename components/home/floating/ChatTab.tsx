@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { ChatBubbleOvalLeftEllipsisIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
+import { isSupabaseReady, supabase } from "@/lib/supabase";
 
 interface Message {
   id: number | string;
@@ -17,14 +18,32 @@ interface ChatTabProps {
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_AGENT_API_URL ?? "/agent-api").replace(/\/$/, "");
-const ORG_ID = process.env.NEXT_PUBLIC_AGENT_ORGANIZATION_ID ?? "org_test";
 const ADMIN_MESSAGE_POLL_INTERVAL_MS = 4000;
 const SESSION_STORAGE_KEY = "alf_chat_session";
+const SELECTED_ORG_STORAGE_KEYS = [
+  "selected_organization_id",
+  "selectedOrganizationId",
+  "organization_id",
+  "org_id",
+];
+const SELECTED_ORG_OBJECT_STORAGE_KEYS = [
+  "selected_organization",
+  "selectedOrganization",
+  "current_organization",
+  "currentOrganization",
+  "organization",
+];
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+
+type AgentContext = {
+  organizationId?: string;
+  accessToken?: string;
+};
 
 type StoredSession = {
   sessionId: string;
   conversationId: string | null;
+  organizationId?: string;
   savedAt: number;
 };
 
@@ -49,6 +68,55 @@ function saveStoredSession(session: StoredSession) {
   window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
 }
 
+function getStringMetadataValue(source: unknown, keys: string[]) {
+  if (!source || typeof source !== "object") return null;
+  const record = source as Record<string, unknown>;
+
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return null;
+}
+
+function getSelectedOrganizationId() {
+  if (typeof window === "undefined") return null;
+
+  for (const key of SELECTED_ORG_STORAGE_KEYS) {
+    const value = window.localStorage.getItem(key);
+    if (value?.trim()) return value.trim();
+  }
+
+  for (const key of SELECTED_ORG_OBJECT_STORAGE_KEYS) {
+    const value = window.localStorage.getItem(key);
+    if (!value) continue;
+
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      const organizationId = getStringMetadataValue(parsed, ["id", "organization_id", "org_id", "orgId"]);
+      if (organizationId) return organizationId;
+    } catch {
+      // Ignore non-JSON values and continue checking other keys.
+    }
+  }
+
+  return null;
+}
+
+async function resolveAgentContext(): Promise<AgentContext> {
+  const selectedOrganizationId = getSelectedOrganizationId();
+  const { data } = isSupabaseReady
+    ? await supabase.auth.getSession()
+    : { data: { session: null } };
+  const session = data.session;
+
+  return {
+    organizationId: selectedOrganizationId ?? undefined,
+    accessToken: session?.access_token,
+  };
+}
+
 function formatTime(ts: number = Date.now()) {
   return new Intl.DateTimeFormat("ko-KR", {
     hour: "numeric",
@@ -62,11 +130,29 @@ function parseUtcTimestamp(value: string) {
   return new Date(hasTimezone ? value : `${value}Z`);
 }
 
-async function sendViaRest(message: string, sessionId: string): Promise<{ text: string; conversationId: string | null }> {
+function buildHeaders(accessToken?: string) {
+  return {
+    "Content-Type": "application/json",
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
+}
+
+async function sendViaRest(
+  message: string,
+  sessionId: string,
+  context: AgentContext,
+): Promise<{ text: string; conversationId: string | null }> {
+  const body = {
+    ...(context.organizationId ? { organization_id: context.organizationId } : {}),
+    session_id: sessionId,
+    message,
+    stream: false,
+  };
+
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ organization_id: ORG_ID, session_id: sessionId, message, stream: false }),
+    headers: buildHeaders(context.accessToken),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
@@ -84,9 +170,17 @@ type ConversationMessageRecord = {
   created_at?: string | null;
 };
 
-async function fetchConversationMessages(conversationId: string): Promise<ConversationMessageRecord[]> {
+async function fetchConversationMessages(
+  conversationId: string,
+  context: AgentContext,
+): Promise<ConversationMessageRecord[]> {
+  const params = new URLSearchParams();
+  if (context.organizationId) params.set("organization_id", context.organizationId);
+  const query = params.toString();
+
   const res = await fetch(
-    `${API_BASE}/conversations/${encodeURIComponent(conversationId)}/messages?organization_id=${encodeURIComponent(ORG_ID)}`,
+    `${API_BASE}/conversations/${encodeURIComponent(conversationId)}/messages${query ? `?${query}` : ""}`,
+    { headers: buildHeaders(context.accessToken) },
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
@@ -122,12 +216,21 @@ export function ChatTab({ isDetailView, onEnterDetail }: ChatTabProps) {
     const stored = loadStoredSession();
     if (!stored) return;
 
-    sessionId.current = stored.sessionId;
-    conversationId.current = stored.conversationId;
-    if (!stored.conversationId) return;
+    resolveAgentContext()
+      .then((context) => {
+        if (stored.organizationId && stored.organizationId !== context.organizationId) {
+          window.localStorage.removeItem(SESSION_STORAGE_KEY);
+          return null;
+        }
 
-    fetchConversationMessages(stored.conversationId)
+        sessionId.current = stored.sessionId;
+        conversationId.current = stored.conversationId;
+        if (!stored.conversationId) return null;
+
+        return fetchConversationMessages(stored.conversationId, context);
+      })
       .then((records) => {
+        if (!records) return;
         records.forEach((record) => seenMessageIds.current.add(record.id));
         setMessages(records.map(mapRecordToMessage));
       })
@@ -146,7 +249,8 @@ export function ChatTab({ isDetailView, onEnterDetail }: ChatTabProps) {
       }
 
       try {
-        const records = await fetchConversationMessages(conversationId.current);
+        const context = await resolveAgentContext();
+        const records = await fetchConversationMessages(conversationId.current, context);
         console.debug("[admin-poll] fetched", records.length, "records for", conversationId.current);
         const newAdminRecords = records.filter(
           (record) => record.sender_type === "admin" && !seenMessageIds.current.has(record.id),
@@ -181,21 +285,34 @@ export function ChatTab({ isDetailView, onEnterDetail }: ChatTabProps) {
     setIsSending(true);
     setError(null);
     if (conversationId.current) {
-      saveStoredSession({
-        sessionId: currentSessionId,
-        conversationId: conversationId.current,
-        savedAt: Date.now(),
-      });
+      resolveAgentContext()
+        .then((context) => {
+          saveStoredSession({
+            sessionId: currentSessionId,
+            conversationId: conversationId.current,
+            organizationId: context.organizationId,
+            savedAt: Date.now(),
+          });
+        })
+        .catch(() => {
+          // 세션 저장 실패는 상담 전송 자체를 막지 않는다.
+        });
     }
 
     const patch = (id: number, update: Partial<Message>) =>
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...update } : m)));
 
     try {
-      const { text: reply, conversationId: newConversationId } = await sendViaRest(text, currentSessionId);
+      const context = await resolveAgentContext();
+      const { text: reply, conversationId: newConversationId } = await sendViaRest(text, currentSessionId, context);
       if (newConversationId) {
         conversationId.current = newConversationId;
-        saveStoredSession({ sessionId: currentSessionId, conversationId: newConversationId, savedAt: Date.now() });
+        saveStoredSession({
+          sessionId: currentSessionId,
+          conversationId: newConversationId,
+          organizationId: context.organizationId,
+          savedAt: Date.now(),
+        });
       }
       patch(agentId, { text: reply, streaming: false, time: formatTime() });
     } catch (restErr) {
