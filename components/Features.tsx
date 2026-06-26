@@ -29,7 +29,7 @@ export default function Features() {
         {/* Left: agent list */}
         <div className="flex flex-col border-r border-[var(--gray-border)] bg-white px-7 py-8">
           <div className="mb-1.5 text-xs font-bold text-[var(--gray-text)]">커스텀 에이전트</div>
-          <div className="mb-3.5 text-xl font-extrabold leading-[1.3] text-[var(--black)]">반복 작업을 자동화하세요.</div>
+          <div className="mb-3.5 text-xl font-extrabold leading-[1.3] text-[var(--black)]">예약 서비스를 자동화하세요.</div>
           <button className="mb-8 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--black)] text-base text-white">→</button>
 
           <div className="mt-auto flex flex-col gap-0">
@@ -37,22 +37,31 @@ export default function Features() {
               <div className={`${agentIconClass} bg-[#fff0e0]`}>💬</div>
               <div>
                 <div className={agentNameClass}>
-                  Q&amp;A 에이전트
+                  채팅&amp;통화 예약
                   <span className="mt-px block text-xs font-normal text-[var(--orange)]">이미 확보된 정보와 지식을 사용해 질문에 답변합니다.</span>
                 </div>
               </div>
             </div>
             <div className={agentItemClass}>
               <div className={`${agentIconClass} bg-[#f0e8ff]`}>✅</div>
-              <div className={agentNameClass}>작업 배정 에이전트</div>
+              <div>
+                <div className={agentNameClass}>RAG 기반 지식 등록</div>
+                <span className="mt-px block text-xs font-normal text-[var(--orange)]">AI가 알아야 할 지식을 등록해 질문에 답변합니다.</span>
+              </div>
             </div>
             <div className={agentItemClass}>
               <div className={`${agentIconClass} bg-[#e0f5f0]`}>📊</div>
-              <div className={agentNameClass}>리포팅 에이전트</div>
+              <div>
+                <div className={agentNameClass}>규칙 기반 에이전트</div>
+                <span className="mt-px block text-xs font-normal text-[var(--orange)]">내 맘대로 AI 설정</span>
+              </div>
             </div>
             <div className={agentItemClass}>
               <div className={`${agentIconClass} bg-[#ffe8f5]`}>🎨</div>
-              <div className={agentNameClass}>나만의 에이전트 만들기</div>
+              <div>
+                <div className={agentNameClass}>예약 태스크 설정</div>
+                <span className="mt-px block text-xs font-normal text-[var(--orange)]">보여주고 싶은 내용을 설정할 수 있습니다.</span>
+              </div>
             </div>
           </div>
         </div>
