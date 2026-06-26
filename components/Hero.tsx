@@ -1,3 +1,5 @@
+'use client'
+
 import { SiOpenai, SiClaude } from 'react-icons/si'
 import type { IconType } from 'react-icons'
 
@@ -52,6 +54,7 @@ const TerminalIcon = () => (
     <path d="M30 40 L46 40" stroke="white" strokeWidth="4.5" strokeLinecap="round" />
   </svg>
 )
+
 import type { ReactElement, ReactNode } from 'react'
 import HeroGradient from './HeroGradient'
 
@@ -76,6 +79,62 @@ const uiGradientInnerClass = 'rounded-[42px]'
 const uiPreviewWrapClass = 'flex w-full max-w-[700px] flex-col items-center gap-[22px]'
 const urlBarClass =
   'flex w-[86%] items-center justify-center gap-[10px] rounded-[26px] border border-[rgba(255,255,255,0.6)] bg-[rgba(255,255,255,0.45)] px-[28px] py-[20px] shadow-[0_4px_18px_rgba(80,120,60,0.12)] backdrop-blur-[8px]'
+const browserMockupClass =
+  'w-full overflow-hidden rounded-t-[38px] border-[7px] border-b-0 border-[#1c2535] bg-white pb-2 shadow-[0_20px_50px_rgba(40,60,30,0.22)]'
+const browserContentClass = 'px-[18px] pt-[18px] pb-0'
+const productImageClass =
+  'relative aspect-[4/3.4] overflow-hidden rounded-2xl bg-[repeating-linear-gradient(135deg,#d9dde2_0_12px,#cfd4da_12px_24px)]'
+const placeholderBadgeClass =
+  'rounded bg-[rgba(255,255,255,0.7)] px-2 py-1 font-mono text-xs text-[#7b818a]'
+const productCaptionClass =
+  'absolute bottom-4 left-5 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]'
+const userMessageRowClass = 'flex justify-end px-[18px] pt-[18px] pb-0'
+const userBubbleClass =
+  'max-w-[80%] rounded-[18px_18px_4px_18px] bg-[#eef0f2] px-4 py-3 text-[15px] font-medium text-[#2e2e2e]'
+const aiReplyClass = 'px-5 pt-[22px] pb-0'
+const aiHeaderClass = 'mb-3 flex items-center gap-2'
+const answerTextClass = 'm-0 text-base font-medium leading-[1.7] text-[#2e2e2e]'
+const ctaButtonClass =
+  'mt-[18px] rounded-[10px] bg-[#c9d6f0] px-4 py-[11px] text-sm font-semibold text-[#2a3a66] transition-colors duration-150 hover:bg-[#b9c9ec]'
+
+const browserMockups = [
+  {
+    placeholder: '제품 사진',
+    product: '그레이 집업',
+    price: 'KRW 79,900',
+    question: '이 제품은 건조기 돌려도 되나요?',
+    answer: [
+      '세탁은 세탁망에 넣어 찬물로 세탁해 주세요.',
+      '소재 특성상 열에 약해 건조기 사용은 지양하고,',
+      '그늘에서 건조해 주시면 오래 입으실 수 있습니다!',
+    ],
+    cta: '세탁 방법 자세히 보기',
+  },
+  {
+    placeholder: '예약 화면',
+    product: '두피 케어 상담',
+    price: '오늘 15:30 가능',
+    question: '오늘 가능한 가장 빠른 시간 알려줘',
+    answer: [
+      '오늘은 오후 3시 30분과 6시 10분 예약이 가능해요.',
+      '시술 시간은 약 50분 정도 소요됩니다.',
+      '원하시면 바로 3시 30분으로 잡아드릴게요.',
+    ],
+    cta: '예약 가능 시간 보기',
+  },
+  {
+    placeholder: '주문 내역',
+    product: '프리미엄 원두 세트',
+    price: '배송중',
+    question: '배송 언제 도착할까요?',
+    answer: [
+      '현재 상품은 서울 물류센터에서 이동 중입니다.',
+      '예상 도착일은 내일 오후 2시에서 5시 사이예요.',
+      '도착 전 알림도 함께 보내드릴게요.',
+    ],
+    cta: '배송 현황 확인하기',
+  },
+]
 
 type AvatarEntry =
   | { label: string; className: string; Icon: IconType; color: string; custom?: never; imgSrc?: never }
@@ -93,6 +152,11 @@ export default function Hero() {
           @keyframes pillDotBlink {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.25; transform: scale(0.8); }
+          }
+
+          @keyframes heroMockupTextIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
           }
         `}
       </style>
@@ -149,6 +213,8 @@ export default function Hero() {
 
           {/* Product UI preview */}
           <HeroGradient>
+            {(themeIndex) => {
+              return (
             <div className={uiGradientInnerClass}>
               <div className={uiPreviewWrapClass}>
                 {/* URL bar */}
@@ -161,41 +227,102 @@ export default function Hero() {
                 </div>
 
                 {/* Browser mockup */}
-                <div className="w-full overflow-hidden rounded-t-[38px] border-[7px] border-b-0 border-[#1c2535] bg-white pb-2 shadow-[0_20px_50px_rgba(40,60,30,0.22)]">
-                  <div className="px-[18px] pt-[18px] pb-0">
+                <div className={browserMockupClass}>
+                  <div className={browserContentClass}>
                     {/* Product image placeholder */}
-                    <div className="relative aspect-[4/3.4] overflow-hidden rounded-2xl bg-[repeating-linear-gradient(135deg,#d9dde2_0_12px,#cfd4da_12px_24px)]">
+                    <div className={productImageClass}>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="rounded bg-[rgba(255,255,255,0.7)] px-2 py-1 font-mono text-xs text-[#7b818a]">제품 사진</span>
+                        <span className={`${placeholderBadgeClass} relative inline-block`}>
+                          <span className="invisible">{browserMockups[0].placeholder}</span>
+                          {browserMockups.map((item, idx) => (
+                            <span
+                              key={item.placeholder}
+                              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ease-out ${idx === themeIndex ? 'opacity-100' : 'opacity-0'}`}
+                            >
+                              {item.placeholder}
+                            </span>
+                          ))}
+                        </span>
                       </div>
-                      <div className="absolute bottom-4 left-5 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]">
-                        <div className="text-lg font-bold text-white">그레이 집업</div>
-                        <div className="mt-0.5 text-[13px] font-medium text-[rgba(255,255,255,0.85)]">KRW 79,900</div>
+                      <div className={`${productCaptionClass} relative`}>
+                        <div className="invisible">
+                          <div className="text-lg font-bold text-white">{browserMockups[0].product}</div>
+                          <div className="mt-0.5 text-[13px] font-medium text-[rgba(255,255,255,0.85)]">{browserMockups[0].price}</div>
+                        </div>
+                        {browserMockups.map((item, idx) => (
+                          <div
+                            key={item.product}
+                            className={`absolute inset-0 transition-opacity duration-500 ease-out ${idx === themeIndex ? 'opacity-100' : 'opacity-0'}`}
+                          >
+                            <div className="text-lg font-bold text-white">{item.product}</div>
+                            <div className="mt-0.5 text-[13px] font-medium text-[rgba(255,255,255,0.85)]">{item.price}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     {/* User message */}
-                    <div className="flex justify-end px-[18px] pt-[18px] pb-0">
-                      <div className="max-w-[80%] rounded-[18px_18px_4px_18px] bg-[#eef0f2] px-4 py-3 text-[15px] font-medium text-[#2e2e2e]">이 제품은 건조기 돌려도 되나요?</div>
+                    <div className={userMessageRowClass}>
+                      <div className={`${userBubbleClass} relative`}>
+                        <span className="invisible">{browserMockups[0].question}</span>
+                        {browserMockups.map((item, idx) => (
+                          <span
+                            key={item.question}
+                            className={`absolute inset-0 flex items-center justify-center px-4 py-3 transition-opacity duration-500 ease-out ${idx === themeIndex ? 'opacity-100' : 'opacity-0'}`}
+                          >
+                            {item.question}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
                     {/* AI reply */}
-                    <div className="px-5 pt-[22px] pb-0">
-                      <div className="mb-3 flex items-center gap-2">
+                    <div className={aiReplyClass}>
+                      <div className={aiHeaderClass}>
                         <span className="rounded-[5px] border border-[#c7ccd2] px-1.5 py-0.5 text-[11px] font-bold text-[#1c2535]">Callbee</span>
                         <span className="text-sm font-bold text-[#1c2535]">AI 에이전트</span>
                       </div>
-                      <p className="m-0 text-base font-medium leading-[1.7] text-[#2e2e2e]">
-                        세탁은 세탁망에 넣어 찬물로 세탁해 주세요.<br/>
-                        소재 특성상 열에 약해 건조기 사용은 지양하고,<br/>
-                        그늘에서 건조해 주시면 오래 입으실 수 있습니다!
+                      <p className={`${answerTextClass} relative`}>
+                        <span className="invisible">
+                          {browserMockups[0].answer.map((line) => (
+                            <span key={line}>
+                              {line}
+                              <br/>
+                            </span>
+                          ))}
+                        </span>
+                        {browserMockups.map((item, idx) => (
+                          <span
+                            key={item.answer.join('|')}
+                            className={`absolute inset-0 transition-opacity duration-500 ease-out ${idx === themeIndex ? 'opacity-100' : 'opacity-0'}`}
+                          >
+                            {item.answer.map((line) => (
+                              <span key={line}>
+                                {line}
+                                <br/>
+                              </span>
+                            ))}
+                          </span>
+                        ))}
                       </p>
-                      <button className="mt-[18px] rounded-[10px] bg-[#c9d6f0] px-4 py-[11px] text-sm font-semibold text-[#2a3a66] transition-colors duration-150 hover:bg-[#b9c9ec]">세탁 방법 자세히 보기</button>
+                      <button className={`${ctaButtonClass} relative`}>
+                        <span className="invisible">{browserMockups[0].cta}</span>
+                        {browserMockups.map((item, idx) => (
+                          <span
+                            key={item.cta}
+                            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ease-out ${idx === themeIndex ? 'opacity-100' : 'opacity-0'}`}
+                          >
+                            {item.cta}
+                          </span>
+                        ))}
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+              )
+            }}
           </HeroGradient>
           <div id="hero-end" className="h-0 w-full" aria-hidden="true" />
         </div>
@@ -203,3 +330,4 @@ export default function Hero() {
     </section>
   )
 }
+  

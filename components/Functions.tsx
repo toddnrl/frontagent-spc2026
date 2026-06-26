@@ -160,7 +160,7 @@ interface Section3Props {
 
 export default function Section3({ titleVariant = 'rules' }: Section3Props) {
   const titles: Record<string, string> = {
-    rules: "가깝게 벗어나는 AI를 막는 '규칙'",
+    rules: "설정한 맞춤 '규칙'을 따르는 AI",
     knowledge: "가깝게 벗어나는 AI를 막는 '지식'",
     tasks: "가깝게 벗어나는 AI를 막는 '태스크'",
   }
@@ -172,7 +172,7 @@ export default function Section3({ titleVariant = 'rules' }: Section3Props) {
     <div className={sectionClass}>
       <h2 className={sectionTitleClass}>{titles[titleVariant]}</h2>
       <p className={sectionLeadClass}>
-        잘못된 프로모션을 약속하거나, 규정과 다른 안내를 하는 AI는 기업의 리스크가 됩니다.
+        기업이 정한 규칙 안에서만 답변하도록 설정합니다.
       </p>
       <LabPanel />
 
