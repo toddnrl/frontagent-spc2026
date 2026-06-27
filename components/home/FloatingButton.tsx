@@ -1,3 +1,5 @@
+"use client";
+
 import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import {
@@ -57,9 +59,11 @@ export function FloatingButton() {
 
   return (
     <div
-      className={`fixed z-50 flex flex-col items-end gap-3 ${
-        isOpen ? "inset-0 sm:inset-auto sm:bottom-8 sm:right-8" : "bottom-6 right-6 sm:bottom-8 sm:right-8"
-      }`}
+      className={
+        isOpen
+          ? "fixed z-50 flex flex-col items-end gap-3 inset-0 sm:inset-auto sm:bottom-8 sm:right-8"
+          : "fixed z-50 flex flex-col items-end gap-3 bottom-6 right-6 sm:bottom-8 sm:right-8"
+      }
     >
       <AnimatePresence>
         {isOpen && (
@@ -131,9 +135,11 @@ export function FloatingButton() {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`h-[60px] w-[60px] rounded-[24px] shadow-[0_8px_30px_rgb(49,130,246,0.3)] items-center justify-center transition-all duration-300 ${
-          isOpen ? "bg-gray-800 text-white shadow-[0_8px_30px_rgb(0,0,0,0.2)] rotate-90" : "bg-blue-500 text-white hover:bg-blue-600 hover:scale-105"
-        } ${isOpen ? "hidden sm:flex" : "flex"}`}
+        className={
+          isOpen
+            ? "h-[60px] w-[60px] rounded-[24px] items-center justify-center transition-all duration-300 bg-gray-800 text-white shadow-[0_8px_30px_rgb(0,0,0,0.2)] rotate-90 hidden sm:flex"
+            : "h-[60px] w-[60px] rounded-[24px] items-center justify-center transition-all duration-300 bg-blue-500 text-white shadow-[0_8px_30px_rgb(49,130,246,0.3)] hover:bg-blue-600 hover:scale-105 flex"
+        }
       >
         {isOpen ? (
           <XMarkIcon className="h-7 w-7" />
