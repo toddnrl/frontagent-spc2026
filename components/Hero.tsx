@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { SiOpenai, SiClaude } from "react-icons/si";
 import type { IconType } from "react-icons";
 
@@ -168,69 +169,71 @@ const headlineSpanClass = "block max-w-full py-[0.04em]";
 const headlineLine2Class =
   "mt-[6px] inline-flex flex-wrap items-center justify-center gap-0 text-[clamp(38px,5.2vw,65px)] leading-[1.12] max-[600px]:text-[36px]";
 const headlinePillClass =
-  "mx-[14px] inline-flex items-center justify-center gap-[10px] rounded-full bg-[#d3e4f7] px-[0.4em] pt-[0.06em] pb-[0.1em] align-middle font-extrabold leading-[1.08] text-[#191919] max-[600px]:mt-[8px]";
+  "mx-[6px] inline-flex items-center justify-center gap-[5px] rounded-full bg-[#d3e4f7] px-[0.16em] pt-[0.06em] pb-[0.1em] align-middle font-extrabold leading-[1.08] text-[#191919] max-[600px]:mt-[8px]";
 const subheadlineClass =
   "mt-[28px] mb-0 text-[20px] font-medium tracking-[-0.01em] text-[#5c5c5c] max-[600px]:text-[16px]";
-const uiGradientInnerClass = "rounded-[42px]";
+const uiGradientInnerClass = "w-full rounded-[42px]";
 const uiPreviewWrapClass =
-  "flex w-full max-w-[700px] flex-col items-center gap-[22px]";
+  "mx-auto flex w-full max-w-[500px] flex-col items-center gap-[22px]";
 const urlBarClass =
   "flex w-[86%] items-center justify-center gap-[10px] rounded-[26px] border border-[rgba(255,255,255,0.6)] bg-[rgba(255,255,255,0.45)] px-[28px] py-[20px] shadow-[0_4px_18px_rgba(80,120,60,0.12)] backdrop-blur-[8px]";
 const browserMockupClass =
   "w-full overflow-hidden rounded-t-[38px] border-[7px] border-b-0 border-[#1c2535] bg-white pb-2 shadow-[0_20px_50px_rgba(40,60,30,0.22)]";
-const browserContentClass = "px-[18px] pt-[18px] pb-0";
-const productImageClass =
-  "relative aspect-[4/3.4] overflow-hidden rounded-2xl bg-[repeating-linear-gradient(135deg,#d9dde2_0_12px,#cfd4da_12px_24px)]";
-const placeholderBadgeClass =
-  "rounded bg-[rgba(255,255,255,0.7)] px-2 py-1 font-mono text-xs text-[#7b818a]";
-const productCaptionClass =
-  "absolute bottom-4 left-5 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]";
-const userMessageRowClass = "flex justify-end px-[18px] pt-[18px] pb-0";
+const browserContentClass = "flex h-[420px] flex-col px-[10px] pt-[22px] pb-5";
+const userMessageRowClass =
+  "flex h-[64px] shrink-0 items-start justify-end px-[8px] pb-0";
 const userBubbleClass =
-  "max-w-[80%] rounded-[18px_18px_4px_18px] bg-[#eef0f2] px-4 py-3 text-[15px] font-medium text-[#2e2e2e]";
-const aiReplyClass = "px-5 pt-[22px] pb-0";
-const aiHeaderClass = "mb-3 flex items-center gap-2";
+  "max-w-[92%] overflow-hidden rounded-[18px_18px_4px_18px] bg-[var(--blue)] px-4 py-3 text-left text-[15px] font-medium text-white";
+const aiReplyClass =
+  "flex min-h-0 flex-1 flex-col items-start px-[8px] pt-[22px]";
+const aiHeaderClass = "mb-2 flex shrink-0 items-center gap-2";
+const aiBubbleClass =
+  "min-h-[44px] w-fit max-w-[92%] rounded-[4px_18px_18px_18px] bg-[#eef0f2] px-4 py-3";
 const answerTextClass =
-  "m-0 text-base font-medium leading-[1.7] text-[#2e2e2e]";
+  "m-0 text-left text-base font-medium leading-[1.7] text-[#2e2e2e]";
 const ctaButtonClass =
-  "mt-[18px] rounded-[10px] bg-[#c9d6f0] px-4 py-[11px] text-sm font-semibold text-[#2a3a66] transition-colors duration-150 hover:bg-[#b9c9ec]";
+  "cursor-pointer rounded-[10px] border-0 bg-[#c9d6f0] px-4 py-[11px] text-sm font-semibold text-[#2a3a66] transition-colors duration-150 hover:bg-[#b9c9ec]";
+const typingDotClass =
+  "h-2 w-2 rounded-full bg-[#9aa1ad] [animation:heroTypingDot_1.1s_ease-in-out_infinite]";
 
-const browserMockups = [
+const TYPING_DELAY_MS = 500;
+const ANSWER_LINE_DELAY_MS = 550;
+const CTA_DELAY_MS = 450;
+const HOLD_AFTER_DONE_MS = 1600;
+
+const HERO_SCENARIOS = [
   {
-    placeholder: "제품 사진",
-    product: "그레이 집업",
-    price: "KRW 79,900",
-    question: "이 제품은 건조기 돌려도 되나요?",
+    gradient:
+      "linear-gradient(135deg, #38bdf8 0%, #a78bfa 30%, #fb923c 65%, #fbbf24 100%)",
+    question: "에어컨에서 냄새 나는데 청소나 수리 가능한가요?",
     answer: [
-      "세탁은 세탁망에 넣어 찬물로 세탁해 주세요.",
-      "소재 특성상 열에 약해 건조기 사용은 지양하고,",
-      "그늘에서 건조해 주시면 오래 입으실 수 있습니다!",
+      "네, 분해 청소와 가스 점검이 함께 진행되는 방문 서비스가 가능합니다.",
+      "악취는 대부분 내부 곰팡이나 냄새로 분해 세척하면 해결돼요.",
+      "가까운 날짜로 바로 예약해 드릴까요?",
     ],
-    cta: "세탁 방법 자세히 보기",
+    cta: "방문 청소 예약하기",
   },
   {
-    placeholder: "예약 화면",
-    product: "두피 케어 상담",
-    price: "오늘 15:30 가능",
-    question: "오늘 가능한 가장 빠른 시간 알려줘",
+    gradient:
+      "linear-gradient(135deg, #09ff00 0%, #fcbcbc 30%, #f870d6 65%, #5dc784 100%)",
+    question: "오늘 저녁 6시에 4명 예약되나요?",
     answer: [
-      "오늘은 오후 3시 30분과 6시 10분 예약이 가능해요.",
-      "시술 시간은 약 50분 정도 소요됩니다.",
-      "원하시면 바로 3시 30분으로 잡아드릴게요.",
+      "네, 오늘 18시에 4인 테이블 예약 가능합니다.",
+      "창가 자리로 안내드릴까요, 룸 자리도 비어 있어요.",
+      "원하시는 자리 알려주시면 바로 확정해 드릴게요.",
+    ],
+    cta: "예약 확정하기",
+  },
+  {
+    gradient:
+      "linear-gradient(135deg, #55ddf5 0%, #e93d3d 30%, #c4eb16 65%, #5dc784 100%)",
+    question: "이번 주말에 펌 하려는데 빈 시간 있나요?",
+    answer: [
+      "토요일은 오후 1시, 일요일은 오전 11시에 가능합니다.",
+      "디자이너 지정도 가능하니 원하시는 분 말씀해 주세요.",
+      "시술 시간은 약 2시간 정도 소요돼요.",
     ],
     cta: "예약 가능 시간 보기",
-  },
-  {
-    placeholder: "주문 내역",
-    product: "프리미엄 원두 세트",
-    price: "배송중",
-    question: "배송 언제 도착할까요?",
-    answer: [
-      "현재 상품은 서울 물류센터에서 이동 중입니다.",
-      "예상 도착일은 내일 오후 2시에서 5시 사이예요.",
-      "도착 전 알림도 함께 보내드릴게요.",
-    ],
-    cta: "배송 현황 확인하기",
   },
 ];
 
@@ -260,7 +263,131 @@ type AvatarEntry =
       custom?: never;
     };
 
+const CALL_BEE_FIXED_PREFIX = "C";
+const CALL_BEE_REST = "all bee";
+const TYPEWRITER_CHAR_MS = 140;
+const TYPEWRITER_HOLD_MS = 2000;
+const TYPEWRITER_ERASE_MS = 140;
+
+function CallBeeTypewriter() {
+  const [length, setLength] = useState(0);
+  const [erasing, setErasing] = useState(false);
+
+  useEffect(() => {
+    let timer: number;
+
+    if (!erasing && length < CALL_BEE_REST.length) {
+      timer = window.setTimeout(() => setLength((n) => n + 1), TYPEWRITER_CHAR_MS);
+    } else if (!erasing && length === CALL_BEE_REST.length) {
+      timer = window.setTimeout(() => setErasing(true), TYPEWRITER_HOLD_MS);
+    } else if (erasing && length > 0) {
+      timer = window.setTimeout(() => setLength((n) => n - 1), TYPEWRITER_ERASE_MS);
+    } else {
+      timer = window.setTimeout(() => setErasing(false), 400);
+    }
+
+    return () => window.clearTimeout(timer);
+  }, [length, erasing]);
+
+  const isHolding = !erasing && length === CALL_BEE_REST.length;
+
+  return (
+    <span className="inline-flex items-center">
+      <span className="flex-none">{CALL_BEE_FIXED_PREFIX}</span>
+      <span
+        className="inline-flex items-center justify-start whitespace-pre"
+        style={{ minWidth: `${CALL_BEE_REST.length * 0.72}ch` }}
+      >
+        {CALL_BEE_REST.slice(0, length)}
+        <span
+          className={`ml-[1px] inline-block w-[2px] bg-current align-middle ${
+            isHolding ? "[animation:heroCursorBlink_0.85s_step-end_infinite]" : ""
+          }`}
+          style={{ height: "0.9em" }}
+        />
+      </span>
+    </span>
+  );
+}
+
+type SequenceStep =
+  | { phase: "typing" }
+  | { phase: "answer"; lineIndex: number; charCount: number }
+  | { phase: "cta" }
+  | { phase: "done" };
+
+const STREAM_CHAR_MS = 22;
+const STREAM_LINE_PAUSE_MS = 350;
+
 export default function Hero() {
+  const [scenarioIndex, setScenarioIndex] = useState(0);
+  const [step, setStep] = useState<SequenceStep>({ phase: "typing" });
+
+  useEffect(() => {
+    const scenario = HERO_SCENARIOS[scenarioIndex];
+    const timers: number[] = [];
+
+    if (step.phase === "typing") {
+      timers.push(
+        window.setTimeout(
+          () => setStep({ phase: "answer", lineIndex: 0, charCount: 0 }),
+          TYPING_DELAY_MS,
+        ),
+      );
+    } else if (step.phase === "answer") {
+      const currentLine = scenario.answer[step.lineIndex] ?? "";
+      if (step.charCount < currentLine.length) {
+        timers.push(
+          window.setTimeout(
+            () =>
+              setStep({
+                phase: "answer",
+                lineIndex: step.lineIndex,
+                charCount: step.charCount + 1,
+              }),
+            STREAM_CHAR_MS,
+          ),
+        );
+      } else if (step.lineIndex < scenario.answer.length - 1) {
+        timers.push(
+          window.setTimeout(
+            () =>
+              setStep({
+                phase: "answer",
+                lineIndex: step.lineIndex + 1,
+                charCount: 0,
+              }),
+            STREAM_LINE_PAUSE_MS,
+          ),
+        );
+      } else {
+        timers.push(
+          window.setTimeout(
+            () => setStep({ phase: "cta" }),
+            ANSWER_LINE_DELAY_MS,
+          ),
+        );
+      }
+    } else if (step.phase === "cta") {
+      timers.push(
+        window.setTimeout(() => setStep({ phase: "done" }), CTA_DELAY_MS),
+      );
+    } else {
+      timers.push(
+        window.setTimeout(() => {
+          setScenarioIndex((i) => (i + 1) % HERO_SCENARIOS.length);
+          setStep({ phase: "typing" });
+        }, HOLD_AFTER_DONE_MS),
+      );
+    }
+
+    return () => timers.forEach((id) => window.clearTimeout(id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, scenarioIndex]);
+
+  const scenario = HERO_SCENARIOS[scenarioIndex];
+  const showCta = step.phase === "cta" || step.phase === "done";
+
   return (
     <section
       className="box-border flex w-full flex-col items-center justify-start bg-white p-0"
@@ -276,6 +403,16 @@ export default function Hero() {
           @keyframes heroMockupTextIn {
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
+          }
+
+          @keyframes heroTypingDot {
+            0%, 60%, 100% { opacity: 0.3; transform: scale(0.85); }
+            30% { opacity: 1; transform: scale(1); }
+          }
+
+          @keyframes heroCursorBlink {
+            0%, 50% { opacity: 1; }
+            50.01%, 100% { opacity: 0; }
           }
         `}
       </style>
@@ -354,7 +491,7 @@ export default function Hero() {
               상담 에이전트
               <span className={headlinePillClass}>
                 <span className="h-[22px] w-[22px] flex-none rounded-full bg-[#2383e2] [animation:pillDotBlink_1.4s_ease-in-out_infinite]" />
-                Call bee
+                <CallBeeTypewriter />
               </span>
             </span>
           </h1>
@@ -364,146 +501,102 @@ export default function Hero() {
           </p>
 
           {/* Product UI preview */}
-          <HeroGradient>
-            {(themeIndex) => {
-              return (
-                <div className={uiGradientInnerClass}>
-                  <div className={uiPreviewWrapClass}>
-                    {/* URL bar */}
-                    <div className={urlBarClass}>
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#4a4a4a"
-                        strokeWidth="1.6"
+          <HeroGradient
+            themes={HERO_SCENARIOS.map((s) => s.gradient)}
+            activeIndex={scenarioIndex}
+          >
+            <div className={uiGradientInnerClass}>
+              <div className={uiPreviewWrapClass}>
+                {/* URL bar */}
+                <div className={urlBarClass}>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#4a4a4a"
+                    strokeWidth="1.6"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                  </svg>
+                  <span className="text-[19px] font-semibold text-[#2e2e2e]">
+                    callbee.com
+                  </span>
+                </div>
+
+                {/* Browser mockup */}
+                <div className={browserMockupClass}>
+                  <div className={browserContentClass}>
+                    {/* User message */}
+                    <div className={userMessageRowClass}>
+                      <div
+                        key={`q-${scenarioIndex}`}
+                        className={`${userBubbleClass} [animation:heroMockupTextIn_0.35s_ease-out]`}
                       >
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-                      </svg>
-                      <span className="text-[19px] font-semibold text-[#2e2e2e]">
-                        callbee.com
-                      </span>
+                        {scenario.question}
+                      </div>
                     </div>
 
-                    {/* Browser mockup */}
-                    <div className={browserMockupClass}>
-                      <div className={browserContentClass}>
-                        {/* Product image placeholder */}
-                        <div className={productImageClass}>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span
-                              className={`${placeholderBadgeClass} relative inline-block`}
-                            >
-                              <span className="invisible">
-                                {browserMockups[0].placeholder}
-                              </span>
-                              {browserMockups.map((item, idx) => (
-                                <span
-                                  key={item.placeholder}
-                                  className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ease-out ${idx === themeIndex ? "opacity-100" : "opacity-0"}`}
-                                >
-                                  {item.placeholder}
-                                </span>
-                              ))}
-                            </span>
-                          </div>
-                          <div className={`${productCaptionClass} relative`}>
-                            <div className="invisible">
-                              <div className="text-lg font-bold text-white">
-                                {browserMockups[0].product}
-                              </div>
-                              <div className="mt-0.5 text-[13px] font-medium text-[rgba(255,255,255,0.85)]">
-                                {browserMockups[0].price}
-                              </div>
+                    {/* AI reply */}
+                    <div className={aiReplyClass}>
+                      <div className={aiHeaderClass}>
+                        <span className="rounded-[5px] border border-[#c7ccd2] px-1.5 py-0.5 text-[11px] font-bold text-[#1c2535]">
+                          Callbee
+                        </span>
+                      </div>
+
+                      <div className={aiBubbleClass}>
+                        <div className={answerTextClass}>
+                          {step.phase === "typing" ? (
+                            <div className="flex min-h-[1.7em] items-center gap-1.5">
+                              <span
+                                className={typingDotClass}
+                                style={{ animationDelay: "0ms" }}
+                              />
+                              <span
+                                className={typingDotClass}
+                                style={{ animationDelay: "150ms" }}
+                              />
+                              <span
+                                className={typingDotClass}
+                                style={{ animationDelay: "300ms" }}
+                              />
                             </div>
-                            {browserMockups.map((item, idx) => (
-                              <div
-                                key={item.product}
-                                className={`absolute inset-0 transition-opacity duration-500 ease-out ${idx === themeIndex ? "opacity-100" : "opacity-0"}`}
-                              >
-                                <div className="text-lg font-bold text-white">
-                                  {item.product}
-                                </div>
-                                <div className="mt-0.5 text-[13px] font-medium text-[rgba(255,255,255,0.85)]">
-                                  {item.price}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* User message */}
-                        <div className={userMessageRowClass}>
-                          <div className={`${userBubbleClass} relative`}>
-                            <span className="invisible">
-                              {browserMockups[0].question}
-                            </span>
-                            {browserMockups.map((item, idx) => (
-                              <span
-                                key={item.question}
-                                className={`absolute inset-0 flex items-center justify-center px-4 py-3 transition-opacity duration-500 ease-out ${idx === themeIndex ? "opacity-100" : "opacity-0"}`}
-                              >
-                                {item.question}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* AI reply */}
-                        <div className={aiReplyClass}>
-                          <div className={aiHeaderClass}>
-                            <span className="rounded-[5px] border border-[#c7ccd2] px-1.5 py-0.5 text-[11px] font-bold text-[#1c2535]">
-                              Callbee
-                            </span>
-                            <span className="text-sm font-bold text-[#1c2535]">
-                              AI 에이전트
-                            </span>
-                          </div>
-                          <p className={`${answerTextClass} relative`}>
-                            <span className="invisible">
-                              {browserMockups[0].answer.map((line) => (
-                                <span key={line}>
-                                  {line}
-                                  <br />
+                          ) : step.phase === "answer" ? (
+                            scenario.answer
+                              .slice(0, step.lineIndex + 1)
+                              .map((line, idx) => (
+                                <span key={line} className="block">
+                                  {idx === step.lineIndex
+                                    ? line.slice(0, step.charCount)
+                                    : line}
                                 </span>
-                              ))}
-                            </span>
-                            {browserMockups.map((item, idx) => (
-                              <span
-                                key={item.answer.join("|")}
-                                className={`absolute inset-0 transition-opacity duration-500 ease-out ${idx === themeIndex ? "opacity-100" : "opacity-0"}`}
-                              >
-                                {item.answer.map((line) => (
-                                  <span key={line}>
-                                    {line}
-                                    <br />
-                                  </span>
-                                ))}
+                              ))
+                          ) : (
+                            scenario.answer.map((line) => (
+                              <span key={line} className="block">
+                                {line}
                               </span>
-                            ))}
-                          </p>
-                          <button className={`${ctaButtonClass} relative`}>
-                            <span className="invisible">
-                              {browserMockups[0].cta}
-                            </span>
-                            {browserMockups.map((item, idx) => (
-                              <span
-                                key={item.cta}
-                                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ease-out ${idx === themeIndex ? "opacity-100" : "opacity-0"}`}
-                              >
-                                {item.cta}
-                              </span>
-                            ))}
-                          </button>
+                            ))
+                          )}
                         </div>
+                      </div>
+
+                      <div className="mt-[18px] h-[44px] shrink-0">
+                        {showCta && (
+                          <button
+                            className={`${ctaButtonClass} [animation:heroMockupTextIn_0.35s_ease-out]`}
+                          >
+                            {scenario.cta}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
-              );
-            }}
+              </div>
+            </div>
           </HeroGradient>
         </div>
       </div>

@@ -86,7 +86,7 @@ function LabPanel() {
               <div className="flex items-center justify-between gap-2.5">
                 <div className={ruleLabelClass}>{func.label}</div>
                 <button
-                  className={`relative h-[26px] w-[46px] shrink-0 rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.12)] transition-colors duration-200 after:absolute after:left-[3px] after:top-[3px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-[0_2px_6px_rgba(0,0,0,0.25)] after:transition-transform after:duration-200 ${
+                  className={`relative h-[26px] w-[46px] shrink-0 cursor-pointer rounded-full border-0 shadow-[0_2px_6px_rgba(0,0,0,0.12)] transition-colors duration-200 after:absolute after:left-[3px] after:top-[3px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-[0_2px_6px_rgba(0,0,0,0.25)] after:transition-transform after:duration-200 ${
                     toggles[func.key]
                       ? 'bg-[linear-gradient(135deg,#2f6bf0,#5b6bf0)] after:translate-x-5'
                       : 'bg-[#d4d8e2]'
