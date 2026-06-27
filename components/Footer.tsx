@@ -3,7 +3,7 @@ export default function Footer() {
   const footerHeadingClass = 'mb-3.5 text-xs font-extrabold uppercase tracking-[0.08em] text-[#a0aec0]'
 
   return (
-    <footer className="snap-start bg-[linear-gradient(160deg,#0d1117,#131925)] py-[64px] pb-9 text-sm text-[#aeb4c2]">
+    <footer className="bg-[linear-gradient(160deg,#0d1117,#131925)] py-[64px] pb-9 text-sm text-[#aeb4c2]">
       <div className="mx-auto max-w-[1140px] px-6">
         <div className="mb-[38px] grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-[30px] max-[900px]:grid-cols-1 max-[900px]:gap-[26px]">
           <div>

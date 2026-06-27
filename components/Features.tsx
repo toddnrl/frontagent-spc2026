@@ -20,9 +20,10 @@ const sectionTitleClass =
 
 export default function Features() {
   return (
-    <section className={pageSectionShell} id="quality">
-    <div className={sectionClass}>
-      <h2 className={sectionTitleClass}>필요한 모든 기능을 다 담았습니다</h2>
+    <section className={pageSectionShell} id="features">
+      <div className={sectionClass}>
+        <span id="quality" className="sr-only" aria-hidden="true" />
+        <h2 className={sectionTitleClass}>필요한 모든 기능을 다 담았습니다</h2>
 
       {/* Main two-panel card */}
       <div className={mainGridClass}>
@@ -142,7 +143,7 @@ export default function Features() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
     </section>
   )
 }

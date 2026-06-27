@@ -7,14 +7,14 @@ import Evaluation from '@/components/EvaluationSection'
 import Dashboard from '@/components/Dashboard'
 import DevSection from '@/components/DevSection'
 import Footer from '@/components/Footer'
+import ScrollSnap from '@/components/ScrollSnap'
 
-import ScrollEffects from '@/components/ScrollEffects'
-import ScrollTopButton from '@/components/ScrollTopButton'
+import { FloatingButton } from '@/components/home/FloatingButton'
 
 export default function Home() {
   return (
     <>
-      <ScrollEffects />
+      <ScrollSnap />
       <Header />
 
       <Hero />
@@ -28,7 +28,7 @@ export default function Home() {
       <DevSection />
       <Footer />
 
-      <ScrollTopButton />
+      <FloatingButton />
     </>
   )
 }

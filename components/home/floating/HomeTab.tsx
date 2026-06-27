@@ -1,3 +1,5 @@
+"use client";
+
 const quickMenus = ["예약하기", "예약 변경", "운영시간", "오시는 길"];
 
 export function HomeTab() {

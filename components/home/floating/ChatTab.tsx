@@ -1,3 +1,5 @@
+"use client";
+
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { ChatBubbleOvalLeftEllipsisIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
