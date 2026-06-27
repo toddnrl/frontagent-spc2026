@@ -31,7 +31,7 @@ export default function Features() {
         <div className="flex flex-col border-r border-[var(--gray-border)] bg-white px-7 py-8">
           <div className="mb-1.5 text-xs font-bold text-[var(--gray-text)]">커스텀 에이전트</div>
           <div className="mb-3.5 text-xl font-extrabold leading-[1.3] text-[var(--black)]">예약 서비스를 자동화하세요.</div>
-          <button className="mb-8 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--black)] text-base text-white">→</button>
+          <button className="mb-8 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--black)] text-base text-white">→</button>
 
           <div className="mt-auto flex flex-col gap-0">
             <div className={agentItemClass}>
@@ -109,7 +109,7 @@ export default function Features() {
             </div>
           </div>
 
-          <button className="absolute right-5 bottom-5 flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#e8e4dd] text-xs text-[#888]">⏸</button>
+          <button className="absolute right-5 bottom-5 flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full border-0 bg-[#e8e4dd] text-xs text-[#888]">⏸</button>
         </div>
       </div>
 
