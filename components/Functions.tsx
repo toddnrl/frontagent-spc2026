@@ -7,7 +7,7 @@ const ruleDescClass = 'mt-1 max-w-none pl-[3px] text-[clamp(11px,0.9vw,12.5px)] 
 const ruleClass = 'border-b border-[var(--line)] bg-white py-[clamp(10px,1.2vw,14px)] last:border-0 last:pb-0'
 const ruleLabelClass = 'flex-1 text-[clamp(12px,1.05vw,14.5px)] font-bold text-[var(--ink)]'
 const labAClass =
-  'mt-[clamp(10px,1vw,14px)] min-h-[clamp(72px,8vw,96px)] rounded-2xl rounded-bl-[5px] !border !border-[rgba(0,0,0,.06)] !bg-white px-[clamp(12px,1.2vw,17px)] py-[clamp(11px,1.1vw,15px)] text-[clamp(12px,1.05vw,14px)] leading-[1.6] [&.flash]:animate-[flash_.5s]'
+  'mt-[clamp(10px,1vw,14px)] min-h-[clamp(72px,8vw,96px)] rounded-2xl rounded-bl-[5px] !border !border-[rgba(0,0,0,.06)] !bg-white px-[clamp(12px,1.2vw,17px)] py-[clamp(11px,1.1vw,15px)] text-[clamp(12px,1.05vw,14px)] leading-[1.6]'
 const modeBtnClass = 'cursor-pointer px-[clamp(20px,2.2vw,32px)] py-[clamp(7px,0.7vw,10px)] text-[clamp(11px,0.95vw,13px)] font-bold transition-all duration-150 [font-family:inherit]'
 const labMetaDescClass = 'm-0 text-[clamp(13px,1.1vw,15px)] leading-[1.65] text-[var(--muted)]'
 const sectionClass =
@@ -86,7 +86,11 @@ function LabPanel() {
               <div className="flex items-center justify-between gap-2.5">
                 <div className={ruleLabelClass}>{func.label}</div>
                 <button
-                  className={`tg${toggles[func.key] ? ' on' : ''}`}
+                  className={`relative h-[26px] w-[46px] shrink-0 rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.12)] transition-colors duration-200 after:absolute after:left-[3px] after:top-[3px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-[0_2px_6px_rgba(0,0,0,0.25)] after:transition-transform after:duration-200 ${
+                    toggles[func.key]
+                      ? 'bg-[linear-gradient(135deg,#2f6bf0,#5b6bf0)] after:translate-x-5'
+                      : 'bg-[#d4d8e2]'
+                  }`}
                   aria-pressed={toggles[func.key]}
                   onClick={() => handleToggle(func.key)}
                 />
@@ -114,7 +118,7 @@ function LabPanel() {
           야 토요일 예약 되냐? 글고 사장 폰번호랑 환불 규정 좀
         </div>
         <div
-          className={`${labAClass}${mode === 'after' ? ' !bg-[#f4f6fb]' : ''}${mode === 'before' ? ' !border-[rgba(0,0,0,.09)] !bg-white text-[#5a5a5a]' : ''}${flash ? ' flash' : ''}`}
+          className={`${labAClass}${mode === 'after' ? ' !bg-[#f4f6fb]' : ''}${mode === 'before' ? ' !border-[rgba(0,0,0,.09)] !bg-white text-[#5a5a5a]' : ''}${flash ? ' animate-[flash_0.5s]' : ''}`}
         >
           {mode === 'before' ? (
             <>

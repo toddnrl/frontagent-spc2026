@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* ----- 디자인 토큰 -----
+ * 컴포넌트별로 직접 값을 쓰도록 이전 예정. 당장은 기존 컴포넌트들이
+ * var(--*)로 참조 중이라 유지한다. */
 :root {
   --black: #111;
   --gray-bg: #f5f4f0;
@@ -10,7 +13,6 @@
   --peach-bg: #fde8d4;
 
   --ink: #16191f;
-  --ink2: #33405c;
   --ink-soft: #5b6b8c;
   --muted: #7a8190;
   --blue: #2f6bf0;
@@ -20,78 +22,48 @@
   --bg2: #f6f8fb;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 80px;
-  scroll-snap-type: none;
-}
-
-body {
-  margin: 0;
-  background: #fff;
-  color: var(--ink);
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button {
-  border: 0;
-  background: none;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-:focus-visible {
-  outline: 3px solid var(--blue);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-
-@keyframes blink {
-  0%,
-  60%,
-  100% {
-    opacity: 0.3;
+/* ----- 기본 리셋 -----
+ * @layer base에 둬야 Tailwind 유틸리티 클래스(bg-*, border-* 등)가
+ * 항상 이 리셋보다 우선 적용된다. 평범한 규칙으로 두면 소스 순서상
+ * 나중에 로드되는 이 리셋이 유틸리티 클래스를 덮어써 버튼이 투명해진다. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
   }
-  30% {
-    opacity: 1;
-  }
-}
 
-@keyframes pop {
-  to {
-    opacity: 1;
-    transform: none;
+  body {
+    margin: 0;
+    background: #fff;
+    color: var(--ink);
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
   }
-}
 
-@keyframes flash {
-  0% {
-    background: #eef4ff;
+  a {
+    color: inherit;
+    text-decoration: none;
   }
-  100% {
-    background: var(--bg2);
+
+  button {
+    border: 0;
+    background: none;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--blue);
+    outline-offset: 2px;
+    border-radius: 6px;
   }
 }
 
 .reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
-    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  opacity: 1;
+  transform: none;
 }
 
 .reveal.in {
@@ -99,50 +71,14 @@ button {
   transform: none;
 }
 
-.progress {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 300;
-  width: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #2f6bf0, #5b6bf0, #7c3aed);
-}
-
-.tg {
-  position: relative;
-  width: 46px;
-  height: 26px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: #d4d8e2;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  transition: background 0.2s;
-}
-
-.tg::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-  transition: transform 0.2s;
-}
-
-.tg.on {
-  background: linear-gradient(135deg, #2f6bf0, #5b6bf0);
-}
-
-.tg.on::after {
-  transform: translateX(20px);
-}
-
-.flash {
-  animation: flash 0.5s;
+/* Functions.tsx가 [&.flash]:animate-[flash_.5s] 형태로 직접 참조한다. */
+@keyframes flash {
+  0% {
+    background: #eef4ff;
+  }
+  100% {
+    background: var(--bg2);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -156,4 +92,3 @@ button {
     animation: none !important;
   }
 }
-

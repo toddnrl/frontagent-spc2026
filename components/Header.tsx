@@ -1,53 +1,15 @@
 'use client'
 
-import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
-
 const headerBaseClass =
-  'pointer-events-auto w-[calc(100%-32px)] max-w-[1180px] rounded-full border border-black/10 bg-white/68 shadow-lg shadow-gray-900/10 ring-1 ring-white/70 backdrop-blur-[22px] backdrop-saturate-[180%] transition-[box-shadow,background-color,border-color] duration-300'
-const headerScrolledClass = 'border-black/12 bg-white/78 shadow-xl shadow-gray-900/15'
+  'pointer-events-auto w-[calc(100%-32px)] max-w-[1180px] rounded-full border border-black/10 bg-white/78 shadow-lg shadow-gray-900/10 ring-1 ring-white/70 backdrop-blur-[22px] backdrop-saturate-[180%]'
 const navLinkClass =
   '!px-[14px] !py-2 !text-[16px] !font-semibold !text-[#4a5568] !rounded-lg !transition-[background,color] !duration-150 hover:!bg-[#eef4ff] hover:!text-[#2f6bf0]'
 
 export default function Header() {
-  const [scrolled, setScrolled] = useState(false)
-  const [hidden, setHidden] = useState(false)
-
-  useEffect(() => {
-    let lastY = window.scrollY
-    const onScroll = () => {
-      const y = window.scrollY
-      const diff = y - lastY
-
-      setScrolled(y > 10)
-      if (diff > 2 && y > 8) setHidden(true)
-      else if (diff < -6) setHidden(false)
-      lastY = y
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
   return (
-    <>
-      <div className="progress" id="progressBar" />
-      <div className="pointer-events-none fixed top-4 left-0 right-0 z-[100] flex justify-center">
-        <motion.header
-          id="hd"
-          className={`${headerBaseClass}${scrolled ? ` ${headerScrolledClass}` : ''}`}
-          initial={false}
-          animate={{
-            y: hidden ? -104 : 0,
-            opacity: hidden ? 0 : 1,
-          }}
-          transition={{
-            type: 'spring',
-            stiffness: 260,
-            damping: 30,
-            mass: 0.8,
-          }}
-        >
-          <div className="relative flex h-[60px] max-w-full items-center gap-2 px-5 sm:px-6 lg:px-7">
+    <div className="pointer-events-none fixed top-4 left-0 right-0 z-[100] flex justify-center">
+      <header id="hd" className={headerBaseClass}>
+        <div className="relative flex h-[60px] max-w-full items-center gap-2 px-5 sm:px-6 lg:px-7">
           <a className="mr-0 flex items-center gap-[9px]" href="#">
             <span
               className="flex h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2f6bf0,#5b6bf0)] text-sm font-black text-white shadow-[0_4px_12px_-6px_rgba(47,107,240,.8)]"
@@ -77,8 +39,7 @@ export default function Header() {
             </svg>
           </button>
         </div>
-        </motion.header>
-      </div>
-    </>
+      </header>
+    </div>
   )
 }
