@@ -259,7 +259,7 @@ export default function EvaluationSection() {
         스스로 평가하고 개선점을 찾아주는 AI
       </h2>
       <p className="mx-auto mb-[18px] w-full max-w-none whitespace-nowrap text-center text-[17px] leading-[1.75] text-[#5b6b8c] max-[860px]:whitespace-normal">
-        AI가 제대로 답변할까? 감으로 관리하면 해결률을 높일 수 없습니다. 채널톡
+        AI가 제대로 답변할까? 감으로 관리하면 해결률을 높일 수 없습니다. Callbee
         AI는 스스로 상담 품질을 진단, 제안합니다.
       </p>
 
@@ -271,7 +271,7 @@ export default function EvaluationSection() {
           </div>
           <h3 className={featureTitleClass}>AI 스스로 평가 및 분석</h3>
           <p className={featureDescClass}>
-            채널톡 AI는 스스로 상담 품질을 진단, 분석합니다.
+            Callbee AI는 스스로 상담 품질을 진단, 분석합니다.
           </p>
         </div>
 

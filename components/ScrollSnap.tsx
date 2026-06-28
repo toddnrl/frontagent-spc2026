@@ -9,6 +9,8 @@ const SECTION_IDS = [
   'knowledge',
   'tasks',
   'advantages',
+  'industry',
+  'solution',
   'evaluation',
   'dashboard',
   'developer',
