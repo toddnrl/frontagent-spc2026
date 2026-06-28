@@ -17,8 +17,6 @@ const ITEMS = [
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="5" y="2" width="14" height="14" rx="2" />
-        <path d="M3 7h0" />
-        <rect x="3" y="6" width="14" height="14" rx="2" />
         <rect x="1" y="10" width="14" height="14" rx="2" />
       </svg>
     ),
@@ -55,9 +53,9 @@ const ITEMS = [
 const sectionClass =
   'mx-auto flex w-full max-w-[1400px] flex-col justify-center bg-transparent px-10 py-12 text-center max-[860px]:px-5 max-[640px]:px-5'
 const titleClass =
-  'mx-auto my-3.5 w-full text-center text-4xl font-extrabold leading-tight tracking-[-0.04em] text-[#0f1118] max-[900px]:text-[28px]'
+  'mx-auto mt-3.5 mb-6 w-full text-center text-4xl font-extrabold leading-tight tracking-[-0.04em] text-[#0f1118] max-[900px]:text-[28px]'
 const leadClass =
-  'mx-auto mb-[30px] w-full max-w-[660px] text-center text-[17px] leading-[1.75] text-[#5b6b8c]'
+  'mx-auto mb-15 w-full max-w-[660px] text-center text-[17px] leading-[1.75] text-[#5b6b8c]'
 
 export default function Advantages() {
   return (
@@ -65,7 +63,7 @@ export default function Advantages() {
     <div className={sectionClass}>
       <h2 className={titleClass}>상담 80%를 해결하는 AI가 가능한 이유</h2>
       <p className={leadClass}>
-        채널톡 AI 상담사가 고객에게 제대로 답변할 수 있는 이유, 복잡하지 않습니다.<br />
+        Callbee AI 상담사가 고객에게 제대로 답변할 수 있는 이유, 복잡하지 않습니다.<br />
         올바른 규칙, 구조화된 지식, 직접 실행 가능한 태스크, 개선 제안 이 네 가지면 충분합니다.
       </p>
       <div className="mx-auto grid w-full max-w-[1200px] grid-cols-4 gap-[clamp(16px,2vw,28px)] text-left max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1 max-[640px]:gap-[14px]">
