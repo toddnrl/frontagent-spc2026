@@ -1177,7 +1177,7 @@ export function CallTab({
           </div>
         ) : null}
       </div>
-      <div className="absolute bottom-0 left-0 right-0 px-4 pb-1">
+      <div className="absolute bottom-0 left-0 right-0 px-4 pb-16">
         <div className="flex flex-col items-center gap-2">
           <button
             onClick={isCallRunning ? endCall : startCall}
