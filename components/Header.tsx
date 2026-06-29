@@ -1,19 +1,32 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { LoginDialog } from '@/components/LoginDialog'
 
 const headerBaseClass =
-  'pointer-events-auto w-full border-b border-black/10 bg-white/90 backdrop-blur-[22px] backdrop-saturate-[180%]'
+  'pointer-events-auto w-full bg-white/60 backdrop-blur-[22px] backdrop-saturate-[180%]'
 const navLinkClass =
   '!px-[14px] !py-2 !text-[16px] !font-semibold !text-[#4a5568] !rounded-lg !transition-[background,color] !duration-150 hover:!bg-[#eef4ff] hover:!text-[#2f6bf0]'
+const mobileNavLinkClass =
+  'w-full rounded-xl px-4 py-3.5 text-center text-[20px] font-bold text-[#16191f]'
 
 const HIDE_AFTER_Y = 80
 
 export default function Header() {
   const [hidden, setHidden] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const lastYRef = useRef(0)
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileMenuOpen])
 
   useEffect(() => {
     lastYRef.current = window.scrollY
@@ -59,12 +72,59 @@ export default function Header() {
           >
             로그인
           </button>
-          <button className="hidden h-[42px] w-[42px] cursor-pointer place-items-center rounded-[9px] border-0 bg-transparent max-[900px]:grid" aria-label="메뉴">
-            <svg width="22" height="22" viewBox="0 0 22 22">
-              <path d="M3 6h16M3 11h16M3 16h16" stroke="#16191f" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
+          <button
+            className="hidden h-[42px] w-[42px] cursor-pointer flex-col items-center justify-center gap-[5px] rounded-[9px] border-0 bg-transparent max-[900px]:flex"
+            aria-label="메뉴"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            <motion.span
+              className="block h-[1.8px] w-[20px] rounded-full bg-[#16191f]"
+              animate={mobileMenuOpen ? { rotate: 45, y: 6.5 } : { rotate: 0, y: 0 }}
+              transition={{ duration: 0.25 }}
+            />
+            <motion.span
+              className="block h-[1.8px] w-[20px] rounded-full bg-[#16191f]"
+              animate={mobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            />
+            <motion.span
+              className="block h-[1.8px] w-[20px] rounded-full bg-[#16191f]"
+              animate={mobileMenuOpen ? { rotate: -45, y: -6.5 } : { rotate: 0, y: 0 }}
+              transition={{ duration: 0.25 }}
+            />
           </button>
         </div>
+
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'calc(100dvh - 60px)', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="flex flex-col overflow-hidden border-t border-black/10"
+            >
+              <nav className="flex flex-1 flex-col items-stretch justify-start gap-2 px-5 pt-6">
+                <a className={mobileNavLinkClass} href="#features" onClick={() => setMobileMenuOpen(false)}>기능 소개</a>
+                <a className={mobileNavLinkClass} href="#integration" onClick={() => setMobileMenuOpen(false)}>연동</a>
+                <a className={mobileNavLinkClass} href="#quality" onClick={() => setMobileMenuOpen(false)}>운영 품질</a>
+                <a className={mobileNavLinkClass} href="#rules" onClick={() => setMobileMenuOpen(false)}>규칙</a>
+                <a className={mobileNavLinkClass} href="#developer" onClick={() => setMobileMenuOpen(false)}>개발자 API</a>
+              </nav>
+              <div className="shrink-0 px-5 pb-8">
+                <button
+                  className="w-full cursor-pointer rounded-xl border-0 bg-[var(--blue)] px-4 py-3.5 text-[16px] font-bold text-white"
+                  onClick={() => {
+                    setMobileMenuOpen(false)
+                    setLoginOpen(true)
+                  }}
+                >
+                  로그인
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
       <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
