@@ -156,7 +156,7 @@ import type { ReactElement, ReactNode } from "react";
 import HeroGradient from "./HeroGradient";
 
 const avatarClass =
-  "flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full text-[30px] leading-[1]";
+  "flex h-[44px] w-[44px] items-center justify-center overflow-hidden rounded-full text-[20px] leading-[1] sm:h-[64px] sm:w-[64px] sm:text-[30px]";
 const heroTextAreaClass =
   "mx-auto flex min-h-0 w-full max-w-[1600px] items-center justify-center gap-0 px-[24px]";
 const heroCenterClass =
