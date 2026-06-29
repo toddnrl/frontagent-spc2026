@@ -12,7 +12,7 @@ export default function HeroGradient({
   children: ReactNode
 }) {
   return (
-    <div className="relative mx-auto mt-[60px] w-[900px] max-w-full overflow-hidden rounded-[48px] px-[200px] pt-[60px] pb-0">
+    <div className="relative mx-auto mt-[60px] w-[900px] max-w-full overflow-hidden rounded-[48px] px-[clamp(24px,12vw,200px)] pt-[60px] pb-0">
       {themes.map((theme, idx) => (
         <div
           key={idx}
