@@ -237,7 +237,7 @@ function InboxColumn() {
     { name: "박지민", count: 16 },
   ];
   const services = [
-    { label: "채널톡 메시지", count: 102, color: "#3B82F6" },
+    { label: "Callbee 메시지", count: 102, color: "#3B82F6" },
     { label: "전화", count: 22, color: "#22C55E" },
     { label: "이메일", count: 35, color: "#EF4444" },
     { label: "라인 Official...", count: 12, color: "#22C55E" },
