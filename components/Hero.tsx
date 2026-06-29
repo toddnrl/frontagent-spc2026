@@ -158,18 +158,15 @@ import HeroGradient from "./HeroGradient";
 const avatarClass =
   "flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full text-[30px] leading-[1]";
 const heroTextAreaClass =
-  "mx-auto flex min-h-0 w-full max-w-[1400px] items-center justify-center gap-0 px-[24px]";
+  "mx-auto flex min-h-0 w-full max-w-[1600px] items-center justify-center gap-0 px-[24px]";
 const heroCenterClass =
   "flex w-full items-center justify-center bg-white [font-family:'Pretendard',-apple-system,sans-serif]";
 const heroInnerClass =
-  "mt-[120px] flex w-full min-w-0 max-w-[1100px] flex-col items-center text-center";
+  "mt-[120px] flex w-full min-w-0 max-w-[1600px] flex-col items-center text-center";
 const headlineClass =
-  "m-0 flex w-full max-w-full flex-col items-center gap-[4px] text-[clamp(42px,6vw,76px)] font-extrabold leading-[1.14] tracking-[-0.03em] text-[#191919] [overflow-wrap:break-word] [word-break:keep-all] max-[600px]:text-[40px] max-[600px]:leading-[1.12]";
-const headlineSpanClass = "block max-w-full py-[0.04em]";
-const headlineLine2Class =
-  "mt-[6px] inline-flex flex-wrap items-center justify-center gap-0 text-[clamp(38px,5.2vw,65px)] leading-[1.12] max-[600px]:text-[36px]";
+  "m-0 w-full max-w-[1600px] text-center text-[clamp(42px,6.4vw,78px)] font-extrabold leading-[1.22] tracking-[-0.03em] text-[#191919] [overflow-wrap:break-word] [word-break:keep-all] max-[600px]:text-[38px] max-[600px]:leading-[1.24]";
 const headlinePillClass =
-  "mx-[6px] inline-flex items-center justify-center gap-[5px] rounded-full bg-[#d3e4f7] px-[0.16em] pt-[0.06em] pb-[0.1em] align-middle font-extrabold leading-[1.08] text-[#191919] max-[600px]:mt-[8px]";
+  "mx-[6px] inline-flex items-center justify-center gap-[5px] rounded-full bg-[#d3e4f7] px-[0.16em] pt-[0.06em] pb-[0.1em] align-middle font-extrabold leading-[1.08] text-[#191919]";
 const subheadlineClass =
   "mt-[28px] mb-0 text-[20px] font-medium tracking-[-0.01em] text-[#5c5c5c] max-[600px]:text-[16px]";
 const uiGradientInnerClass = "w-full rounded-[42px]";
@@ -277,11 +274,17 @@ function CallBeeTypewriter() {
     let timer: number;
 
     if (!erasing && length < CALL_BEE_REST.length) {
-      timer = window.setTimeout(() => setLength((n) => n + 1), TYPEWRITER_CHAR_MS);
+      timer = window.setTimeout(
+        () => setLength((n) => n + 1),
+        TYPEWRITER_CHAR_MS,
+      );
     } else if (!erasing && length === CALL_BEE_REST.length) {
       timer = window.setTimeout(() => setErasing(true), TYPEWRITER_HOLD_MS);
     } else if (erasing && length > 0) {
-      timer = window.setTimeout(() => setLength((n) => n - 1), TYPEWRITER_ERASE_MS);
+      timer = window.setTimeout(
+        () => setLength((n) => n - 1),
+        TYPEWRITER_ERASE_MS,
+      );
     } else {
       timer = window.setTimeout(() => setErasing(false), 400);
     }
@@ -301,7 +304,9 @@ function CallBeeTypewriter() {
         {CALL_BEE_REST.slice(0, length)}
         <span
           className={`ml-[1px] inline-block w-[2px] bg-current align-middle ${
-            isHolding ? "[animation:heroCursorBlink_0.85s_step-end_infinite]" : ""
+            isHolding
+              ? "[animation:heroCursorBlink_0.85s_step-end_infinite]"
+              : ""
           }`}
           style={{ height: "0.9em" }}
         />
@@ -484,15 +489,13 @@ export default function Hero() {
 
           {/* Headline */}
           <h1 className={headlineClass}>
-            <span className={headlineSpanClass}>
-              바쁜 일상 속, 놓치는 예약 없이
-            </span>
-            <span className={headlineLine2Class}>
-              상담 에이전트
+            바쁜 일상 속, 놓치는 예약 없이{" "}
+            <span className="inline-flex items-center whitespace-nowrap align-middle">
               <span className={headlinePillClass}>
                 <span className="h-[22px] w-[22px] flex-none rounded-full bg-[#2383e2] [animation:pillDotBlink_1.4s_ease-in-out_infinite]" />
                 <CallBeeTypewriter />
               </span>
+              하게
             </span>
           </h1>
 
