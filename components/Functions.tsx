@@ -227,7 +227,7 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
   return (
     <div className="grid min-h-[clamp(380px,40vw,520px)] grid-cols-[1.4fr_0.8fr] items-stretch gap-[clamp(16px,2.5vw,34px)] max-[700px]:min-h-[auto] max-[700px]:grid-cols-1 max-[700px]:gap-4">
       {/* LEFT: panel */}
-      <div className={`relative overflow-hidden flex flex-col justify-center rounded-[clamp(16px,1.8vw,26px)] py-[18px] !shadow-[inset_0_1px_0_rgba(255,255,255,.5)] max-[700px]:rounded-[18px] max-[700px]:py-3.5 ${titleVariant === 'knowledge' ? 'px-[5%]' : titleVariant === 'tasks' ? 'px-[3%]' : 'px-[19%] max-[700px]:px-[6%]'} ${{ rules: '!bg-[linear-gradient(145deg,#cddeff_0%,#b8ccff_50%,#a8bdff_100%)]', knowledge: '!bg-[linear-gradient(145deg,#decdff_0%,#bda8ff_70%,#ccb8ff_100%)]' , tasks: '!bg-[linear-gradient(145deg,#fef2c8_0%,#fde598_50%,#fad46c_100%)]'}[titleVariant]}`}>
+      <div className={`relative overflow-hidden flex flex-col justify-center rounded-[clamp(16px,1.8vw,26px)] py-[18px] !shadow-[inset_0_1px_0_rgba(255,255,255,.5)] max-[700px]:rounded-[18px] max-[700px]:py-3.5 ${titleVariant === 'knowledge' ? 'px-[5%]' : titleVariant === 'tasks' ? 'px-[3%]' : 'px-[19%] max-[700px]:px-[6%]'} ${{ rules: '!bg-[linear-gradient(145deg,#cddeff_0%,#b8ccff_50%,#a8bdff_100%)]', knowledge: '!bg-[linear-gradient(145deg,#cce8de_0%,#b6dcc8_50%,#a8d2c0_100%)]', tasks: '!bg-[linear-gradient(145deg,#fde8da_0%,#f9dcd0_50%,#f4d0c4_100%)]'}[titleVariant]}`}>
         {/* White diagonal sheen */}
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.38)_0%,rgba(255,255,255,0.12)_28%,transparent_48%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_60%,rgba(255,255,255,0.1)_100%)]" />
@@ -268,14 +268,53 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
             </>
           ) : (
             <>
-              {/* Folder icon decorations */}
-              <g transform="translate(14, 12) scale(5)" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              {/* Brain + neural network decoration */}
+              <path
+                d="M88,232 C52,218 32,192 28,162 C18,138 24,108 42,93 C47,72 63,54 88,50 C102,30 128,22 154,28 C173,18 198,23 218,39 C238,28 262,36 275,57 C300,57 318,80 315,107 C333,120 340,148 330,170 C342,192 336,222 310,234 C292,255 264,262 238,251 C218,264 192,266 172,256 C152,270 124,266 106,252 C97,249 91,242 88,232 Z"
+                fill="none"
+                stroke="rgba(255,255,255,0.22)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <path d="M105,115 C118,98 140,105 142,125" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="1.2" strokeLinecap="round" />
+              <path d="M158,68 C176,58 200,68 198,88" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="1.2" strokeLinecap="round" />
+              <path d="M240,80 C258,68 280,82 276,105" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="1.2" strokeLinecap="round" />
+              <g stroke="rgba(255,255,255,0.16)" strokeWidth="1" fill="none">
+                <line x1="128" y1="112" x2="170" y2="88" />
+                <line x1="170" y1="88" x2="208" y2="78" />
+                <line x1="208" y1="78" x2="248" y2="94" />
+                <line x1="248" y1="94" x2="280" y2="120" />
+                <line x1="128" y1="112" x2="152" y2="142" />
+                <line x1="152" y1="142" x2="198" y2="124" />
+                <line x1="198" y1="124" x2="248" y2="94" />
+                <line x1="198" y1="124" x2="220" y2="158" />
+                <line x1="220" y1="158" x2="268" y2="160" />
+                <line x1="220" y1="158" x2="172" y2="178" />
+                <line x1="172" y1="178" x2="136" y2="162" />
+                <line x1="152" y1="142" x2="136" y2="162" />
+                <line x1="268" y1="160" x2="248" y2="192" />
+                <line x1="172" y1="178" x2="192" y2="210" />
+                <line x1="280" y1="120" x2="268" y2="160" />
+                <line x1="170" y1="88" x2="198" y2="124" />
+                <line x1="128" y1="112" x2="198" y2="124" />
+                <line x1="248" y1="94" x2="220" y2="158" />
+                <line x1="136" y1="162" x2="172" y2="178" />
+                <line x1="192" y1="210" x2="248" y2="192" />
+                <line x1="208" y1="78" x2="198" y2="124" />
               </g>
-              <g transform="translate(258, 152) scale(4.5)" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                <line x1="2" y1="11" x2="22" y2="11" />
-              </g>
+              <circle cx="128" cy="112" r="5.5" fill="rgba(255,255,255,0.28)" />
+              <circle cx="170" cy="88" r="5.5" fill="rgba(255,255,255,0.28)" />
+              <circle cx="208" cy="78" r="5" fill="rgba(255,255,255,0.24)" />
+              <circle cx="248" cy="94" r="5.5" fill="rgba(255,255,255,0.28)" />
+              <circle cx="280" cy="120" r="5" fill="rgba(255,255,255,0.24)" />
+              <circle cx="152" cy="142" r="6" fill="rgba(255,255,255,0.30)" />
+              <circle cx="198" cy="124" r="7" fill="rgba(255,255,255,0.32)" />
+              <circle cx="220" cy="158" r="6" fill="rgba(255,255,255,0.28)" />
+              <circle cx="268" cy="160" r="5" fill="rgba(255,255,255,0.24)" />
+              <circle cx="172" cy="178" r="5.5" fill="rgba(255,255,255,0.28)" />
+              <circle cx="136" cy="162" r="5" fill="rgba(255,255,255,0.24)" />
+              <circle cx="248" cy="192" r="5" fill="rgba(255,255,255,0.22)" />
+              <circle cx="192" cy="210" r="5" fill="rgba(255,255,255,0.22)" />
             </>
           )}
         </svg>
@@ -395,39 +434,39 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
             </div>
           ) : titleVariant === 'knowledge' ? (
             /* 지식 문서 테이블 */
-            <table className="w-full border-collapse text-[13px]">
+            <table className="w-full border-collapse text-[13px] max-[700px]:text-[11px]">
               <thead>
                 <tr className="border-b border-[#f0ede8] bg-[#fafaf9]">
-                  <th className="px-3 py-2 text-left font-semibold text-[#888]">
+                  <th className="px-3 py-2 text-left font-semibold text-[#888] max-[700px]:px-2">
                     <span className="inline-flex items-center">이름</span>
                   </th>
-                  <th className="px-2 py-2 text-left font-semibold text-[#888]">
+                  <th className="px-2 py-2 text-left font-semibold text-[#888] max-[700px]:hidden">
                     <span className="inline-flex items-center">형식 </span>
                   </th>
                   <th className="px-2 py-2 text-left font-semibold text-[#888]">
-                    <span className="inline-flex items-center">참조 횟수 </span>
+                    <span className="inline-flex items-center">참조 </span>
                   </th>
-                  <th className="px-2 py-2 text-left font-semibold text-[#888]">
+                  <th className="px-2 py-2 text-left font-semibold text-[#888] max-[700px]:hidden">
                     <span className="inline-flex items-center">해결률 </span>
                   </th>
-                  <th className="px-2 py-2 text-left font-semibold text-[#888]">
+                  <th className="px-2 py-2 text-left font-semibold text-[#888] max-[700px]:hidden">
                     <span className="inline-flex items-center">업데이트 </span>
                   </th>
-                  <th className="px-3 py-2 text-left font-semibold text-[#888]">상태</th>
-                  <th className="w-8 px-2 py-2" />
+                  <th className="px-3 py-2 text-left font-semibold text-[#888] max-[700px]:px-2">상태</th>
+                  <th className="w-8 px-2 py-2 max-[700px]:hidden" />
                 </tr>
               </thead>
               <tbody>
                 {KNOWLEDGE_DOCS.map((doc, i) => (
                   <tr key={i} className="border-b border-[#f5f4f0] transition-colors hover:bg-[#f5f8ff] last:border-b-0">
-                    <td className="px-3 py-3 font-semibold text-[var(--ink)]">{doc.title}</td>
-                    <td className="px-2 py-3">
+                    <td className="px-3 py-3 font-semibold text-[var(--ink)] max-[700px]:px-2 max-[700px]:py-2.5">{doc.title}</td>
+                    <td className="px-2 py-3 max-[700px]:hidden">
                       <span className="rounded-full bg-[#e8f0ff] px-2.5 py-0.5 text-[11px] font-bold text-[#5b8ef0]">Document</span>
                     </td>
-                    <td className="px-2 py-3 text-center tabular-nums text-[var(--ink)]">{doc.count}</td>
-                    <td className="px-2 py-3 text-left tabular-nums text-[#bbb]">{doc.pct}</td>
-                    <td className="px-2 py-3 text-left text-[12px] text-[#bbb]">{doc.date}</td>
-                    <td className="px-3 py-3">
+                    <td className="px-2 py-3 text-center tabular-nums text-[var(--ink)] max-[700px]:py-2.5">{doc.count}</td>
+                    <td className="px-2 py-3 text-left tabular-nums text-[#bbb] max-[700px]:hidden">{doc.pct}</td>
+                    <td className="px-2 py-3 text-left text-[12px] text-[#bbb] max-[700px]:hidden">{doc.date}</td>
+                    <td className="px-3 py-3 max-[700px]:px-2 max-[700px]:py-2.5">
                       <button
                         onClick={() => setKnowledgeToggles(prev => prev.map((v, j) => j === i ? !v : v))}
                         className={[
@@ -443,7 +482,7 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
                         ].join(' ')} />
                       </button>
                     </td>
-                    <td className="w-8 px-2 py-3 text-center text-[18px] leading-none text-[#ccc]">⋮</td>
+                    <td className="w-8 px-2 py-3 text-center text-[18px] leading-none text-[#ccc] max-[700px]:hidden">⋮</td>
                   </tr>
                 ))}
               </tbody>
