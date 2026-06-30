@@ -36,6 +36,7 @@ yarn-error.log*
 
 # local MCP config
 .mcp.json
+.codex/
 
 # vercel
 .vercel
