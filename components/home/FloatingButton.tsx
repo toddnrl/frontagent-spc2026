@@ -1,119 +1,172 @@
 "use client";
 
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
-  ChatBubbleOvalLeftEllipsisIcon,
   Cog6ToothIcon,
   HomeIcon,
   PhoneIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/solid";
 import { HomeTab } from "./floating/HomeTab";
-import { ChatTab } from "./floating/ChatTab";
 import { CallTab } from "./floating/CallTab";
+import { ShaderOrb } from "./floating/ShaderOrb";
 import { SettingsTab } from "./floating/SettingsTab";
+
+function MinimizeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M9 15L4 20M9 15H5M9 15V19"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15 9L20 4M15 9H19M15 9V5"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+type FloatingTab = "home" | "call" | "settings";
+
+const surfaceTransition = {
+  layout: { type: "spring" as const, stiffness: 420, damping: 40, mass: 0.9 },
+  opacity: { duration: 0.1 },
+};
+
+const orbTransition = {
+  type: "spring" as const,
+  stiffness: 420,
+  damping: 40,
+  mass: 0.9,
+};
 
 const navItems = [
   { id: "home", label: "홈", icon: HomeIcon },
-  { id: "chat", label: "대화", icon: ChatBubbleOvalLeftEllipsisIcon },
-  { id: "call", label: "전화", icon: PhoneIcon },
+  { id: "call", label: "상담", icon: PhoneIcon },
   { id: "settings", label: "설정", icon: Cog6ToothIcon },
-];
-
-const detailHeaderInfo: Record<string, { title: string; subtitle: string }> = {
-  chat: { title: "AI 상담원과 대화", subtitle: "실시간 채팅 상담" },
-  call: { title: "AI 상담원과 전화", subtitle: "실시간 음성 상담" },
-};
+] satisfies Array<{ id: FloatingTab; label: string; icon: typeof HomeIcon }>;
 
 export function FloatingButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("chat");
-  const [isDetailView, setIsDetailView] = useState(false);
+  const [activeTab, setActiveTab] = useState<FloatingTab>("call");
+  const [isCallTextMode, setIsCallTextMode] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const goToTab = (tabId: string) => {
+  const isCallView = activeTab === "call";
+  const isConversationView = isCallView && isCallTextMode;
+  const showBottomNav = !isCallView;
+
+  const goToTab = (tabId: FloatingTab) => {
     setActiveTab(tabId);
-    setIsDetailView(false);
+    setIsCallTextMode(false);
   };
 
   const renderContent = () => {
     if (activeTab === "home") return <HomeTab />;
-    if (activeTab === "call") return <CallTab />;
     if (activeTab === "settings") return <SettingsTab />;
 
-    return <ChatTab isDetailView={isDetailView} onEnterDetail={() => setIsDetailView(true)} />;
+    return (
+      <CallTab
+        isTextMode={isCallTextMode}
+        onTextModeChange={setIsCallTextMode}
+      />
+    );
   };
-
-  const isCallTab = activeTab === "call";
-  const showDetailHeader = isDetailView || isCallTab;
-  const header = showDetailHeader ? detailHeaderInfo[activeTab] : null;
 
   const goBack = () => {
-    if (isCallTab) {
+    if (isConversationView) {
+      setIsCallTextMode(false);
+      return;
+    }
+
+    if (isCallView) {
       goToTab("home");
-    } else {
-      setIsDetailView(false);
     }
   };
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
-    document.body.classList.add("floating-panel-open")
+    document.body.classList.add("floating-panel-open");
     return () => {
-      document.body.classList.remove("floating-panel-open")
-    }
+      document.body.classList.remove("floating-panel-open");
+    };
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const onClickOutside = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
-    }
-    document.addEventListener("mousedown", onClickOutside)
-    return () => document.removeEventListener("mousedown", onClickOutside)
+      if (!containerRef.current?.contains(event.target as Node))
+        setIsOpen(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
   }, [isOpen]);
 
-  const panelBody = (
+  const renderPanelBody = () => (
     <div className="flex h-dvh flex-col sm:h-[680px]">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        {header ? (
+      <div className="flex items-center justify-between px-5 py-4">
+        {isCallView ? (
           <div className="flex items-center gap-3">
             <button
               onClick={goBack}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-50 text-gray-500"
+              className={`relative flex h-9 w-9 items-center justify-center rounded-full ${
+                isConversationView
+                  ? "overflow-hidden bg-[#40c9f4] text-white shadow-[0_8px_20px_rgb(14,165,233,0.22)]"
+                  : "bg-gray-50 text-gray-500"
+              }`}
               aria-label="이전"
             >
-              <ArrowLeftIcon className="h-5 w-5" />
+              {isConversationView && (
+                <motion.span
+                  layoutId="floating-call-orb"
+                  transition={orbTransition}
+                  className="pointer-events-none absolute inset-0 overflow-hidden rounded-full"
+                >
+                  <ShaderOrb active={false} />
+                  <span className="absolute inset-0 bg-white/10" />
+                </motion.span>
+              )}
+              <ArrowLeftIcon className="relative z-10 h-5 w-5" />
             </button>
-            <div>
-              <div className="text-[15px] font-extrabold text-gray-900">{header.title}</div>
-              <div className="text-[12px] font-bold text-gray-400">{header.subtitle}</div>
-            </div>
           </div>
         ) : (
           <div>
-            <div className="text-[15px] font-extrabold text-gray-900">Front Agent</div>
-            <div className="text-[12px] font-bold text-gray-400">AI 상담원에게 문의하기</div>
+            <div className="text-[15px] font-extrabold text-gray-900">
+              Front Agent
+            </div>
+            <div className="text-[12px] font-bold text-gray-400">
+              AI 상담원에게 문의하기
+            </div>
           </div>
         )}
         <button
           onClick={() => setIsOpen(false)}
+          aria-label="축소"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-50 text-gray-500"
         >
-          <XMarkIcon className="h-5 w-5" />
+          <MinimizeIcon className="h-5 w-5" />
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 p-4">
-        {renderContent()}
-      </div>
+      <div className="min-h-0 flex-1 p-4">{renderContent()}</div>
 
-      {!showDetailHeader && (
-        <div className="grid grid-cols-4 border-t border-gray-100 bg-white px-2 py-2">
+      {showBottomNav && (
+        <div className="grid grid-cols-3 border-t border-gray-100 bg-white px-2 py-2">
           {navItems.map(({ id, label, icon: Icon }) => {
             const isActive = activeTab === id;
 
@@ -136,51 +189,53 @@ export function FloatingButton() {
   );
 
   return (
-    <div ref={containerRef} className={`fixed flex flex-col items-end gap-3 bottom-6 right-6 sm:bottom-8 sm:right-8 ${isOpen ? "z-[150]" : "z-50"}`}>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            key="mobile-panel"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:hidden"
-          >
-            {panelBody}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            key="desktop-panel"
-            initial={{ opacity: 0, y: 18, scale: 0.94 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 18, scale: 0.94 }}
-            transition={{ duration: 0.2 }}
-            className="hidden overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:block sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
-          >
-            {panelBody}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={
-          isOpen
-            ? "h-[60px] w-[60px] rounded-[24px] items-center justify-center transition-all duration-300 bg-gray-800 text-white shadow-[0_8px_30px_rgb(0,0,0,0.2)] rotate-90 hidden sm:flex"
-            : "h-[60px] w-[60px] rounded-[24px] items-center justify-center transition-all duration-300 bg-blue-500 text-white shadow-[0_8px_30px_rgb(49,130,246,0.3)] hover:bg-blue-600 hover:scale-105 flex"
-        }
+    <LayoutGroup id="floating-widget">
+      <div
+        ref={containerRef}
+        className={`fixed bottom-6 right-6 flex flex-col items-end sm:bottom-8 sm:right-8 ${isOpen ? "z-[150]" : "z-50"}`}
       >
-        {isOpen ? (
-          <XMarkIcon className="h-7 w-7" />
-        ) : (
-          <ChatBubbleOvalLeftEllipsisIcon className="h-7 w-7" />
-        )}
-      </button>
-    </div>
+        <AnimatePresence initial={false} mode="popLayout">
+          {isOpen ? (
+            <motion.div
+              key="floating-panel"
+              layoutId="floating-surface"
+              initial={{ opacity: 0.96 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0.96 }}
+              transition={surfaceTransition}
+              style={{ transformOrigin: "bottom right" }}
+              className="fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:relative sm:inset-auto sm:h-[680px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
+            >
+              {renderPanelBody()}
+            </motion.div>
+          ) : (
+            <button
+              key="floating-cta"
+              type="button"
+              onClick={() => setIsOpen(true)}
+              aria-label="AI 상담원 체험하기"
+              className="group relative flex max-w-[calc(100vw-48px)] items-center gap-3 rounded-full py-2 pl-2 pr-5 text-[15px] font-extrabold text-gray-900 sm:gap-4 sm:py-3 sm:pl-3 sm:pr-7 sm:text-[18px]"
+            >
+              <motion.span
+                layoutId="floating-surface"
+                transition={orbTransition}
+                className="absolute inset-0 rounded-full border border-gray-200 bg-white shadow-[0_10px_30px_rgb(17,24,39,0.10)] transition-shadow duration-300 group-hover:border-gray-300 group-hover:shadow-[0_14px_36px_rgb(17,24,39,0.14)]"
+              />
+              <motion.span
+                layoutId="floating-call-orb"
+                transition={orbTransition}
+                className="relative z-10 h-11 w-11 shrink-0 overflow-hidden rounded-full bg-[#40c9f4] shadow-[inset_0_0_18px_rgb(255,255,255,0.35)] sm:h-14 sm:w-14"
+              >
+                <ShaderOrb active={false} />
+                <span className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/25" />
+              </motion.span>
+              <span className="relative z-10 whitespace-nowrap leading-none">
+                AI 상담원 체험하기
+              </span>
+            </button>
+          )}
+        </AnimatePresence>
+      </div>
+    </LayoutGroup>
   );
 }
