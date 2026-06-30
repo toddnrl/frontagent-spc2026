@@ -47,10 +47,7 @@ const surfaceTransition = {
 };
 
 const orbTransition = {
-  type: "spring" as const,
-  stiffness: 420,
-  damping: 40,
-  mass: 0.9,
+  layout: { type: "tween" as const, duration: 0.42, ease: [0.22, 1, 0.36, 1] as const },
 };
 
 const navItems = [
@@ -194,7 +191,7 @@ export function FloatingButton() {
         ref={containerRef}
         className={`pointer-events-none fixed right-0 bottom-6 left-0 flex flex-col items-center sm:bottom-8 ${isOpen ? "z-[150]" : "z-50"}`}
       >
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence initial={false} mode="sync">
           {isOpen ? (
             <motion.div
               key="floating-panel"
@@ -218,7 +215,7 @@ export function FloatingButton() {
             >
               <motion.span
                 layoutId="floating-surface"
-                transition={orbTransition}
+                transition={surfaceTransition}
                 className="absolute inset-0 rounded-full border border-gray-200 bg-white shadow-[0_10px_30px_rgb(17,24,39,0.10)] transition-shadow duration-300 group-hover:border-gray-300 group-hover:shadow-[0_14px_36px_rgb(17,24,39,0.14)]"
               />
               <motion.span

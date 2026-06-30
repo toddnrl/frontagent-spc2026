@@ -30,10 +30,7 @@ const HOLDING_MESSAGES = [
 ];
 
 const orbTransition = {
-  type: "spring" as const,
-  stiffness: 420,
-  damping: 40,
-  mass: 0.9,
+  layout: { type: "tween" as const, duration: 0.42, ease: [0.22, 1, 0.36, 1] as const },
 };
 
 export interface VoiceTraceEvent {
@@ -1547,7 +1544,7 @@ export function CallTab({
             layoutId="floating-call-orb"
             transition={orbTransition}
             onClick={isCallRunning ? undefined : startCall}
-            className={`relative flex h-44 w-44 items-center justify-center overflow-hidden rounded-full bg-[#40c9f4] shadow-[0_22px_56px_rgb(14,165,233,0.3)] transition-transform ${
+            className={`relative flex h-44 w-44 items-center justify-center overflow-hidden rounded-full bg-[#40c9f4] shadow-[0_22px_56px_rgb(14,165,233,0.3)] ${
               isCallRunning ? "" : "cursor-pointer hover:scale-[1.02]"
             }`}
             role={isCallRunning ? undefined : "button"}
