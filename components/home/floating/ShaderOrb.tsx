@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+let sharedShaderStartedAt: number | null = null;
+
 export function ShaderOrb({ active }: { active: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const activeRef = useRef(active);
@@ -123,7 +125,8 @@ export function ShaderOrb({ active }: { active: boolean }) {
     const activeUniform = gl.getUniformLocation(program, "u_active");
     const resolutionUniform = gl.getUniformLocation(program, "u_resolution");
     let frameId = 0;
-    const startedAt = performance.now();
+    sharedShaderStartedAt ??= performance.now();
+    const shaderStartedAt = sharedShaderStartedAt;
 
     const resize = () => {
       const ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -141,7 +144,7 @@ export function ShaderOrb({ active }: { active: boolean }) {
       gl.useProgram(program);
       gl.enableVertexAttribArray(position);
       gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-      gl.uniform1f(timeUniform, (performance.now() - startedAt) / 1000);
+      gl.uniform1f(timeUniform, (performance.now() - shaderStartedAt) / 1000);
       gl.uniform1f(activeUniform, activeRef.current ? 1 : 0);
       gl.uniform2f(resolutionUniform, canvas.width, canvas.height);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -159,5 +162,45 @@ export function ShaderOrb({ active }: { active: boolean }) {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden="true" />;
+  return (
+    <>
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 h-full w-full rounded-full [clip-path:circle(50%)]"
+        aria-hidden="true"
+      />
+      {active && (
+        <div
+          className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%)]"
+          aria-hidden="true"
+        >
+          <div className="flex h-12 items-center gap-1.5 rounded-full bg-white/10 px-4 backdrop-blur-[1px]">
+            {[18, 30, 22, 38, 26, 34, 20].map((height, index) => (
+              <span
+                key={index}
+                className="w-1.5 rounded-full bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.45)]"
+                style={{
+                  height,
+                  animation: "shader-orb-voice-wave 780ms ease-in-out infinite",
+                  animationDelay: `${index * 80}ms`,
+                }}
+              />
+            ))}
+          </div>
+          <style>{`
+            @keyframes shader-orb-voice-wave {
+              0%, 100% {
+                transform: scaleY(0.45);
+                opacity: 0.55;
+              }
+              50% {
+                transform: scaleY(1);
+                opacity: 1;
+              }
+            }
+          `}</style>
+        </div>
+      )}
+    </>
+  );
 }

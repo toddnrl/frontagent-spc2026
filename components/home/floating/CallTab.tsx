@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { PaperAirplaneIcon, PhoneIcon } from "@heroicons/react/24/solid";
 import { getEmbedOrganizationId } from "../../../lib/organization";
@@ -28,6 +28,13 @@ const HOLDING_MESSAGES = [
   "관련 내용을 확인하고 말씀드리겠습니다.",
   "조금만 기다려 주세요. 확인 중입니다.",
 ];
+
+const orbTransition = {
+  type: "spring" as const,
+  stiffness: 420,
+  damping: 40,
+  mass: 0.9,
+};
 
 export interface VoiceTraceEvent {
   id: string;
@@ -151,8 +158,10 @@ export function CallTab({
   const [isSendingText, setIsSendingText] = useState(false);
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>("idle");
   const [isTextCallActive, setIsTextCallActive] = useState(false);
+  const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("pipeline");
   const callStatusRef = useRef<CallStatus>("idle");
+  const isVoiceCallActiveRef = useRef(false);
   const callSecondsRef = useRef(0);
   const pipelineStatusRef = useRef<PipelineStatus>("idle");
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -189,6 +198,18 @@ export function CallTab({
   const sessionIdRef = useRef(`${sessionIdPrefix}${crypto.randomUUID()}`);
   const conversationIdRef = useRef<string | null>(null);
   const seenMessageIdsRef = useRef<Set<string>>(new Set());
+  const messageListRef = useRef<HTMLDivElement | null>(null);
+
+  const setVoiceCallActive = (active: boolean) => {
+    isVoiceCallActiveRef.current = active;
+    setIsVoiceCallActive(active);
+  };
+
+  useEffect(() => {
+    const list = messageListRef.current;
+    if (!list) return;
+    list.scrollTop = list.scrollHeight;
+  }, [textMessages]);
 
   useEffect(() => {
     const stored = loadActiveCallSession(organizationId, userId);
@@ -264,7 +285,7 @@ export function CallTab({
   }, [pipelineStatus]);
 
   useEffect(() => {
-    if (callStatus !== "active") return;
+    if (!isVoiceCallActiveRef.current || callStatus !== "active") return;
 
     const interval = window.setInterval(() => {
       setCallSeconds((seconds) => {
@@ -285,7 +306,7 @@ export function CallTab({
   };
 
   const endCallByIdleTimeout = () => {
-    if (callStatusRef.current !== "active") return;
+    if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active") return;
     onTrace?.({
       id: "voice_idle_end",
       title: "무응답 종료",
@@ -295,6 +316,7 @@ export function CallTab({
     callStatusRef.current = "ended";
     emitCallEndedTrace();
     releaseCallResources();
+    setVoiceCallActive(false);
     setCallStatus("ended");
     notifyCallEnded();
   };
@@ -302,10 +324,10 @@ export function CallTab({
   const schedulePipelineIdleTimeouts = () => {
     clearPipelineIdleTimers();
     idleWarningPlayedRef.current = false;
-    if (callStatusRef.current !== "active" || voiceMode !== "pipeline") return;
+    if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active" || voiceMode !== "pipeline") return;
 
     idleWarningTimerRef.current = window.setTimeout(() => {
-      if (callStatusRef.current !== "active" || pipelineStatusRef.current !== "listening") return;
+      if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active" || pipelineStatusRef.current !== "listening") return;
       idleWarningPlayedRef.current = true;
       onTrace?.({
         id: "voice_idle_warning",
@@ -318,7 +340,7 @@ export function CallTab({
         "voice_idle_warning",
         "무응답 종료 안내",
       ).finally(() => {
-        if (callStatusRef.current === "active" && pipelineStatusRef.current === "speaking") {
+        if (isVoiceCallActiveRef.current && callStatusRef.current === "active" && pipelineStatusRef.current === "speaking") {
           setPipelineStatus("listening");
         }
       });
@@ -390,7 +412,7 @@ export function CallTab({
     ringbackAudioContextRef.current = audioContext;
 
     const playPulse = () => {
-      if (callStatusRef.current !== "active") return;
+      if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active") return;
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
       oscillator.type = "sine";
@@ -428,7 +450,7 @@ export function CallTab({
   };
 
   const isCurrentPipelineTurn = (turnId: number) =>
-    callStatusRef.current === "active" && pipelineTurnIdRef.current === turnId;
+    isVoiceCallActiveRef.current && callStatusRef.current === "active" && pipelineTurnIdRef.current === turnId;
 
   const persistCallSession = (preview?: string) => {
     const nextPreview = preview?.trim() || lastTranscriptRef.current?.trim() || undefined;
@@ -752,7 +774,7 @@ export function CallTab({
     traceTitle = "음성 생성",
     options: { turnId?: number; signal?: AbortSignal; requireActiveCall?: boolean } = {},
   ) => {
-    if (options.requireActiveCall && callStatusRef.current !== "active") return;
+    if (options.requireActiveCall && (!isVoiceCallActiveRef.current || callStatusRef.current !== "active")) return;
     const stepStartedAt = performance.now();
     onTrace?.({ id: traceId, title: traceTitle, status: "active", detail: "TTS 처리 중" });
 
@@ -768,11 +790,11 @@ export function CallTab({
       }),
     });
     if (!speechResponse.ok) throw new Error(`음성 생성 실패 (HTTP ${speechResponse.status})`);
-    if (options.requireActiveCall && callStatusRef.current !== "active") return;
+    if (options.requireActiveCall && (!isVoiceCallActiveRef.current || callStatusRef.current !== "active")) return;
     if (options.turnId !== undefined && !isCurrentPipelineTurn(options.turnId)) return;
 
     const speechBlob = await speechResponse.blob();
-    if (options.requireActiveCall && callStatusRef.current !== "active") return;
+    if (options.requireActiveCall && (!isVoiceCallActiveRef.current || callStatusRef.current !== "active")) return;
     if (options.turnId !== undefined && !isCurrentPipelineTurn(options.turnId)) return;
     onTrace?.({
       id: traceId,
@@ -800,7 +822,7 @@ export function CallTab({
       onTrace?.({ id: "voice_opening_failed", title: "상담 시작 안내 실패", status: "warning", detail: message });
     } finally {
       stopRingbackTone();
-      if (callStatusRef.current === "active") {
+      if (isVoiceCallActiveRef.current && callStatusRef.current === "active") {
         setPipelineStatus("listening");
         schedulePipelineIdleTimeouts();
       }
@@ -838,6 +860,17 @@ export function CallTab({
     channel.send(JSON.stringify(event));
   };
 
+  const setRealtimeMicrophoneEnabled = (enabled: boolean) => {
+    mediaStreamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = enabled;
+    });
+  };
+
+  const requestRealtimeResponse = (event: Record<string, unknown> = { type: "response.create" }) => {
+    setRealtimeMicrophoneEnabled(false);
+    sendRealtimeEvent(event);
+  };
+
   const sendRealtimeTextMessage = (message: string) => {
     // realtime 통화 중 텍스트 입력은 음성 턴과 동일한 data channel로 주입해야
     // 모델이 음성으로 답한다. 별도 REST(/voice/speech)로 합성하면 WebRTC 오디오
@@ -850,12 +883,13 @@ export function CallTab({
         content: [{ type: "input_text", text: message }],
       },
     });
-    sendRealtimeEvent({ type: "response.create" });
+    requestRealtimeResponse();
   };
 
   const queryAgent = async (call: RealtimeFunctionCall) => {
     if (handledCallIdsRef.current.has(call.call_id)) return;
     handledCallIdsRef.current.add(call.call_id);
+    setPipelineStatus("processing");
 
     let message = "";
     try {
@@ -887,7 +921,7 @@ export function CallTab({
         output: JSON.stringify({ answer }),
       },
     });
-    sendRealtimeEvent({
+    requestRealtimeResponse({
       type: "response.create",
       response: {
         tool_choice: "none",
@@ -906,14 +940,50 @@ export function CallTab({
 
     if (event.type === "error") {
       const realtimeError = event as RealtimeErrorEvent;
+      setRealtimeMicrophoneEnabled(true);
       setError(realtimeError.error?.message ?? "실시간 음성 처리 오류가 발생했습니다.");
       return;
+    }
+
+    if (
+      event.type === "response.audio.delta" ||
+      event.type === "response.audio_transcript.delta" ||
+      event.type === "output_audio_buffer.started"
+    ) {
+      setRealtimeMicrophoneEnabled(false);
+      setPipelineStatus("speaking");
+      return;
+    }
+
+    if (
+      event.type === "input_audio_buffer.speech_stopped" ||
+      event.type === "conversation.item.input_audio_transcription.completed" ||
+      event.type === "response.created" ||
+      event.type === "response.output_item.added" ||
+      event.type === "response.audio.done" ||
+      event.type === "output_audio_buffer.stopped" ||
+      event.type === "input_audio_buffer.speech_started"
+    ) {
+      if (
+        event.type === "input_audio_buffer.speech_stopped" ||
+        event.type === "conversation.item.input_audio_transcription.completed" ||
+        event.type === "response.created" ||
+        event.type === "response.output_item.added"
+      ) {
+        setPipelineStatus("processing");
+        return;
+      }
+      if (event.type !== "input_audio_buffer.speech_started") {
+        setRealtimeMicrophoneEnabled(true);
+        setPipelineStatus("listening");
+      }
     }
 
     if (event.type !== "response.done") return;
     const output = (event as RealtimeResponseDoneEvent).response?.output ?? [];
     output.forEach((item) => {
       if (item.type === "function_call" && "name" in item && item.name === "query_agent") {
+        setPipelineStatus("processing");
         void queryAgent(item as RealtimeFunctionCall);
       }
     });
@@ -932,14 +1002,22 @@ export function CallTab({
       callStatusRef.current = "active";
       setCallSeconds(0);
       setIsTextCallActive(true);
-      emitCallStartedTrace();
+      setVoiceCallActive(false);
+      // 텍스트로 시작한 대화는 음성 통화가 아니므로 /voice/call/start를
+      // 호출하지 않는다(emitCallStartedTrace는 실제 음성 통화 전용).
+      onTrace?.({
+        id: "voice_call_start",
+        title: "상담 시작",
+        status: "done",
+        detail: "텍스트 상담이 시작되었습니다.",
+      });
       persistCallSession(message);
     }
     onTextModeChange?.(true);
     setTextInput("");
     setError(null);
 
-    if (callStatusRef.current === "active" && voiceMode === "realtime") {
+    if (isVoiceCallActiveRef.current && callStatusRef.current === "active" && voiceMode === "realtime") {
       // realtime 통화 중에는 LangGraph를 직접 부르지 않는다 - 모델이 data
       // channel 메시지를 받아 스스로 query_agent를 호출하고 음성으로 답하며,
       // queryAgent가 사용자/AI 메시지를 textMessages에 직접 기록한다.
@@ -966,10 +1044,10 @@ export function CallTab({
         messages.map((item) => (item.id === agentMessageId ? { ...item, text: answer, isPending: false } : item)),
       );
 
-      if (callStatusRef.current === "active" && mediaStreamRef.current) {
+      if (isVoiceCallActiveRef.current && callStatusRef.current === "active" && mediaStreamRef.current) {
         setPipelineStatus("listening");
         schedulePipelineIdleTimeouts();
-      } else if (callStatusRef.current === "active") {
+      } else if (isVoiceCallActiveRef.current && callStatusRef.current === "active") {
         setPipelineStatus("listening");
       } else {
         setPipelineStatus("idle");
@@ -978,7 +1056,7 @@ export function CallTab({
       if (textAbortController.signal.aborted || callStatusRef.current !== "active") return;
       const messageText = textError instanceof Error ? textError.message : "메시지 전송에 실패했습니다.";
       setError(messageText);
-      setPipelineStatus(callStatusRef.current === "active" ? "idle" : pipelineStatusRef.current);
+      setPipelineStatus(isVoiceCallActiveRef.current && callStatusRef.current === "active" ? "idle" : pipelineStatusRef.current);
       setTextMessages((messages) =>
         messages.map((item) =>
           item.id === agentMessageId
@@ -1050,8 +1128,8 @@ export function CallTab({
       if (!isCurrentPipelineTurn(turnId)) return;
       const message = pipelineError instanceof Error ? pipelineError.message : "음성 처리에 실패했습니다.";
       setError(message);
-      setPipelineStatus(callStatusRef.current === "active" ? "listening" : "idle");
-      if (callStatusRef.current === "active") schedulePipelineIdleTimeouts();
+      setPipelineStatus(isVoiceCallActiveRef.current && callStatusRef.current === "active" ? "listening" : "idle");
+      if (isVoiceCallActiveRef.current && callStatusRef.current === "active") schedulePipelineIdleTimeouts();
       onTrace?.({
         id: "voice_answer",
         title: "AI 응답",
@@ -1150,7 +1228,7 @@ export function CallTab({
     vadIntervalRef.current = window.setInterval(() => {
       const currentCallStatus = callStatusRef.current;
       const currentPipelineStatus = pipelineStatusRef.current;
-      if (currentCallStatus !== "active") return;
+      if (!isVoiceCallActiveRef.current || currentCallStatus !== "active") return;
 
       analyser.getByteTimeDomainData(samples);
       let sum = 0;
@@ -1195,7 +1273,7 @@ export function CallTab({
   };
 
   const startCall = async () => {
-    if (callStatus === "connecting" || callStatus === "active") return;
+    if (isVoiceCallActiveRef.current && (callStatusRef.current === "connecting" || callStatusRef.current === "active")) return;
 
     releaseCallResources();
     handledCallIdsRef.current.clear();
@@ -1204,6 +1282,7 @@ export function CallTab({
     conversationIdRef.current = null;
     sessionIdRef.current = `${sessionIdPrefix}${crypto.randomUUID()}`;
     persistCallSession();
+    setVoiceCallActive(true);
     callStatusRef.current = "connecting";
     setCallStatus("connecting");
     setCallSeconds(0);
@@ -1260,9 +1339,14 @@ export function CallTab({
       dataChannel.onmessage = (event) => handleRealtimeEvent(String(event.data));
       dataChannel.onerror = () => setError("음성 데이터 채널 오류가 발생했습니다.");
       dataChannel.onopen = () => {
+        if (callStatusRef.current === "connecting") {
+          setCallStatus("active");
+          callStatusRef.current = "active";
+          emitCallStartedTrace();
+        }
         // 사용자가 먼저 말하기를 기다리지 않고, 연결되면 상담원처럼 먼저 인사한다.
         // tool_choice: none으로 보내 인사 turn에는 query_agent가 호출되지 않게 한다.
-        sendRealtimeEvent({
+        requestRealtimeResponse({
           type: "response.create",
           response: {
             tool_choice: "none",
@@ -1291,14 +1375,17 @@ export function CallTab({
 
       peerConnection.onconnectionstatechange = () => {
         if (peerConnection.connectionState === "connected") {
+          if (callStatusRef.current === "active") return;
           setCallStatus("active");
           callStatusRef.current = "active";
           emitCallStartedTrace();
         }
-        if (["failed", "disconnected", "closed"].includes(peerConnection.connectionState)) {
+        if (["failed", "closed"].includes(peerConnection.connectionState)) {
+          if (callStatusRef.current === "ended") return;
           callStatusRef.current = "ended";
           emitCallEndedTrace();
           releaseCallResources();
+          setVoiceCallActive(false);
           setCallStatus("ended");
           notifyCallEnded();
         }
@@ -1312,6 +1399,7 @@ export function CallTab({
     } catch (callError) {
       if (callError instanceof DOMException && callError.name === "AbortError") return;
       releaseCallResources();
+      setVoiceCallActive(false);
       callStatusRef.current = "ended";
       const message = callError instanceof Error ? callError.message : "통화 연결에 실패했습니다.";
       setError(message);
@@ -1338,12 +1426,13 @@ export function CallTab({
     callStatusRef.current = "ended";
     emitCallEndedTrace();
     releaseCallResources();
+    setVoiceCallActive(false);
     setIsTextCallActive(false);
     setCallStatus("ended");
     notifyCallEnded();
   };
 
-  const isCallRunning = (callStatus === "connecting" || callStatus === "active") && !isTextCallActive;
+  const isCallRunning = isVoiceCallActive && (callStatus === "connecting" || callStatus === "active");
   const hasMediaStream = mediaStreamRef.current !== null;
   const pipelineStatusLabels = {
     idle: "듣는 중입니다...",
@@ -1352,8 +1441,13 @@ export function CallTab({
     processing: "생각하는 중입니다...",
     speaking: "말하는 중입니다...",
   };
-  const pipelineStatusLabel = voiceMode === "realtime" ? "통화 중입니다." : pipelineStatusLabels[pipelineStatus];
-  const isSpeaking = callStatus === "active" && pipelineStatus === "speaking";
+  const pipelineStatusLabel = pipelineStatusLabels[pipelineStatus];
+  const isSpeaking = isVoiceCallActive && callStatus === "active" && pipelineStatus === "speaking";
+  const voiceStatusLabel = isCallRunning
+    ? callStatus === "connecting"
+      ? "연결 중입니다..."
+      : pipelineStatusLabel
+    : "통화를 시작하거나 아래에 메시지를 입력할 수 있습니다.";
   const composer = (
     <div className="absolute bottom-0 left-0 right-0 px-1 pb-1">
       <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white py-2 pl-5 pr-2 shadow-[0_8px_24px_rgb(0,0,0,0.08)] transition focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-50">
@@ -1421,7 +1515,7 @@ export function CallTab({
 
   const conversationView = (
     <div className="relative flex h-full flex-col pb-20">
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-1 py-2">
+      <div ref={messageListRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto px-1 py-2">
         {textMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center px-8 text-center text-[12px] font-bold leading-relaxed text-gray-400">
             메시지를 입력하면 텍스트 상담이 시작됩니다.
@@ -1451,6 +1545,7 @@ export function CallTab({
         <div className="flex w-full flex-col items-center text-center">
           <motion.div
             layoutId="floating-call-orb"
+            transition={orbTransition}
             onClick={isCallRunning ? undefined : startCall}
             className={`relative flex h-44 w-44 items-center justify-center overflow-hidden rounded-full bg-[#40c9f4] shadow-[0_22px_56px_rgb(14,165,233,0.3)] transition-transform ${
               isCallRunning ? "" : "cursor-pointer hover:scale-[1.02]"
@@ -1478,16 +1573,33 @@ export function CallTab({
               </span>
             )}
           </motion.div>
-          <div className="mt-8 max-w-[300px] text-[12px] font-bold leading-relaxed text-gray-400">
-            {isCallRunning
-              ? callStatus === "connecting"
-                ? "연결 중입니다..."
-                : pipelineStatusLabel
-              : "통화를 시작하거나 아래에 메시지를 입력할 수 있습니다."}
+          <div className="mt-8 flex min-h-[36px] max-w-[300px] items-center justify-center text-[12px] font-bold leading-relaxed text-gray-400">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={voiceStatusLabel}
+                initial={{ opacity: 0, y: 6, filter: "blur(3px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -6, filter: "blur(3px)" }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                {voiceStatusLabel}
+              </motion.div>
+            </AnimatePresence>
           </div>
-          {isCallRunning && (
-            <div className="mt-3 font-mono text-[18px] font-extrabold text-gray-700">{formatCallDuration(callSeconds)}</div>
-          )}
+          <AnimatePresence initial={false}>
+            {isCallRunning && (
+              <motion.div
+                key="call-duration"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="mt-3 font-mono text-[18px] font-extrabold text-gray-700"
+              >
+                {formatCallDuration(callSeconds)}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

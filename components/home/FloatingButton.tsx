@@ -192,7 +192,7 @@ export function FloatingButton() {
     <LayoutGroup id="floating-widget">
       <div
         ref={containerRef}
-        className={`fixed bottom-6 right-6 flex flex-col items-end sm:bottom-8 sm:right-8 ${isOpen ? "z-[150]" : "z-50"}`}
+        className={`pointer-events-none fixed right-0 bottom-6 left-0 flex flex-col items-center sm:bottom-8 ${isOpen ? "z-[150]" : "z-50"}`}
       >
         <AnimatePresence initial={false} mode="popLayout">
           {isOpen ? (
@@ -203,8 +203,8 @@ export function FloatingButton() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0.96 }}
               transition={surfaceTransition}
-              style={{ transformOrigin: "bottom right" }}
-              className="fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:relative sm:inset-auto sm:h-[680px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
+              style={{ transformOrigin: "bottom center" }}
+              className="pointer-events-auto fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:relative sm:inset-auto sm:h-[680px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
             >
               {renderPanelBody()}
             </motion.div>
@@ -214,7 +214,7 @@ export function FloatingButton() {
               type="button"
               onClick={() => setIsOpen(true)}
               aria-label="AI 상담원 체험하기"
-              className="group relative flex max-w-[calc(100vw-48px)] items-center gap-3 rounded-full py-2 pl-2 pr-5 text-[15px] font-extrabold text-gray-900 sm:gap-4 sm:py-3 sm:pl-3 sm:pr-7 sm:text-[18px]"
+              className="pointer-events-auto group relative flex max-w-[calc(100vw-48px)] items-center gap-3 rounded-full py-2 pl-2 pr-5 text-[15px] font-extrabold text-gray-900 sm:gap-4 sm:py-3 sm:pl-3 sm:pr-7 sm:text-[18px]"
             >
               <motion.span
                 layoutId="floating-surface"
