@@ -155,6 +155,15 @@ export type TaskNodeUpdateInput = Partial<TaskNodeCreateInput> & {
   retry_limit?: number;
 };
 
+export type ConversationMessage = {
+  id: string;
+  conversationId: string;
+  senderType: "customer" | "ai" | "admin" | "system";
+  senderName?: string | null;
+  message: string;
+  createdAt?: string | null;
+};
+
 export type AgentRun = {
   id: string;
   sessionId: string;

@@ -47,6 +47,7 @@ interface CallTabProps {
   sessionIdPrefix?: string;
   userId?: string | null;
   isTextMode?: boolean;
+  enableSharedLayout?: boolean;
   onTextModeChange?: (enabled: boolean) => void;
   onTrace?: (event: VoiceTraceEvent) => void;
   onCallDuration?: (label: string, seconds: number) => void;
@@ -142,6 +143,7 @@ export function CallTab({
   sessionIdPrefix = "web_call_",
   userId = null,
   isTextMode = false,
+  enableSharedLayout = true,
   onTextModeChange,
   onTrace,
   onCallDuration,
@@ -157,6 +159,7 @@ export function CallTab({
   const [isTextCallActive, setIsTextCallActive] = useState(false);
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("pipeline");
+  const [hasMediaStream, setHasMediaStream] = useState(false);
   const callStatusRef = useRef<CallStatus>("idle");
   const isVoiceCallActiveRef = useRef(false);
   const callSecondsRef = useRef(0);
@@ -164,6 +167,9 @@ export function CallTab({
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const handledCallIdsRef = useRef(new Set<string>());
+  // AI가 should_end_session을 받았을 때, 마지막 인사 음성이 다 끝날 때까지
+  // 끊지 않고 기다리기 위한 플래그. 다음 response.done(음성 출력 완료)에서 소비된다.
+  const pendingAgentEndSessionRef = useRef(false);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const ringbackAudioContextRef = useRef<AudioContext | null>(null);
@@ -263,7 +269,6 @@ export function CallTab({
       status: "done",
       detail: "웹 음성 상담이 연결되었습니다.",
     });
-    void notifyCallStarted();
   };
 
   const emitCallEndedTrace = () => {
@@ -285,11 +290,12 @@ export function CallTab({
     if (!isVoiceCallActiveRef.current || callStatus !== "active") return;
 
     const interval = window.setInterval(() => {
+      let nextSeconds = 0;
       setCallSeconds((seconds) => {
-        const next = Math.min(seconds + 1, 59 * 60 + 59);
-        onCallDuration?.(formatCallDuration(next), next);
-        return next;
+        nextSeconds = Math.min(seconds + 1, 59 * 60 + 59);
+        return nextSeconds;
       });
+      onCallDuration?.(formatCallDuration(nextSeconds), nextSeconds);
     }, 1000);
 
     return () => window.clearInterval(interval);
@@ -381,6 +387,7 @@ export function CallTab({
 
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
     mediaStreamRef.current = null;
+    setHasMediaStream(false);
 
     if (audioElementRef.current) {
       audioElementRef.current.pause();
@@ -472,27 +479,6 @@ export function CallTab({
     persistCallSession(preview);
   };
 
-  const notifyCallStarted = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/voice/call/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          organization_id: organizationId,
-          session_id: sessionIdRef.current,
-          channel: "web_call",
-        }),
-      });
-      if (!response.ok) return;
-      const data = (await response.json()) as { conversation_id?: unknown };
-      if (typeof data.conversation_id === "string" && data.conversation_id.trim()) {
-        publishConversationUpdate(data.conversation_id.trim());
-      }
-    } catch {
-      // 시작 기록 API가 없거나 실패해도 통화 흐름은 계속한다.
-    }
-  };
-
   const parseSsePayload = (payload: string) => {
     try {
       return JSON.parse(payload) as Record<string, unknown>;
@@ -566,6 +552,10 @@ export function CallTab({
     let streamConversationId: string | null = null;
     let knowledgeNoticePromise: Promise<void> | null = null;
     let didPlayKnowledgeNotice = false;
+    // requestPipelineTurnStream은 녹음 종료 이벤트에서만 호출되는 비동기 함수라
+    // 렌더 경로에서 실행되지 않는다(react-hooks/purity는 컴포넌트 본문에 정의된
+    // 함수를 보수적으로 렌더 가능 경로로 취급해 오탐한다).
+    // eslint-disable-next-line react-hooks/purity
     let lastSseEventAt = performance.now();
 
     const emitPipelineTrace = (event: VoiceTraceEvent) => {
@@ -841,14 +831,70 @@ export function CallTab({
     });
 
     if (!response.ok) throw new Error(`AI 응답 실패 (HTTP ${response.status})`);
-    const data = (await response.json()) as { message?: unknown; conversation_id?: unknown };
+    const data = (await response.json()) as {
+      message?: unknown;
+      conversation_id?: unknown;
+      should_end_session?: unknown;
+    };
     if (typeof data.conversation_id === "string" && data.conversation_id.trim()) {
       publishConversationUpdate(data.conversation_id.trim(), message.trim() || undefined);
     }
     if (typeof data.message !== "string" || !data.message.trim()) {
       throw new Error("AI 응답이 비어 있습니다.");
     }
-    return data.message;
+    return { answer: data.message, shouldEndSession: data.should_end_session === true };
+  };
+
+  // realtime 통화 중 search_knowledge/task_action tool 결과를 받아오는 webhook.
+  // /chat(LangGraph 전체)과 달리 search_knowledge는 지식검색만 직접 처리해
+  // 더 빠르고, task_action만 LangGraph 전체(예약 등 실제 작업)를 탄다.
+  const requestWebCallToolAnswer = async (
+    toolName: "search_knowledge" | "task_action",
+    message: string,
+  ) => {
+    const endpoint = toolName === "search_knowledge" ? "search-knowledge" : "task-action";
+    const response = await fetch(`${API_BASE}/web-call/realtime/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        organization_id: organizationId,
+        session_id: sessionIdRef.current,
+        message,
+      }),
+    });
+
+    if (!response.ok) throw new Error(`AI 응답 실패 (HTTP ${response.status})`);
+    const data = (await response.json()) as {
+      answer?: unknown;
+      conversation_id?: unknown;
+      should_end_session?: unknown;
+    };
+    if (typeof data.conversation_id === "string" && data.conversation_id.trim()) {
+      publishConversationUpdate(data.conversation_id.trim(), message.trim() || undefined);
+    }
+    if (typeof data.answer !== "string" || !data.answer.trim()) {
+      throw new Error("AI 응답이 비어 있습니다.");
+    }
+    return { answer: data.answer, shouldEndSession: data.should_end_session === true };
+  };
+
+  // AI가 통화를 마무리하기로 판단했을 때(should_end_session) 쓰는 종료 경로.
+  // 사용자가 버튼으로 끊는 endCall과 달리, 마지막 인사를 끝까지 음성으로
+  // 들려준 뒤 끊어야 하므로 호출자가 음성 재생이 끝난 시점에 호출한다.
+  const endCallByAgent = () => {
+    if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active") return;
+    onTrace?.({
+      id: "voice_agent_end",
+      title: "AI 통화 종료",
+      status: "active",
+      detail: "AI가 상담을 마무리하여 통화를 종료했습니다.",
+    });
+    callStatusRef.current = "ended";
+    emitCallEndedTrace();
+    releaseCallResources();
+    setVoiceCallActive(false);
+    setCallStatus("ended");
+    notifyCallEnded();
   };
 
   const sendRealtimeEvent = (event: Record<string, unknown>) => {
@@ -897,11 +943,14 @@ export function CallTab({
     }
 
     let answer = "죄송합니다. 말씀하신 내용을 이해하지 못했습니다. 다시 말씀해 주세요.";
+    const toolName = call.name === "search_knowledge" ? "search_knowledge" : "task_action";
 
     if (message) {
       setTextMessages((messages) => [...messages, { id: `user_${Date.now()}`, role: "user", text: message }]);
       try {
-        answer = await requestAgentAnswer(message);
+        const result = await requestWebCallToolAnswer(toolName, message);
+        answer = result.answer;
+        if (result.shouldEndSession) pendingAgentEndSessionRef.current = true;
       } catch (requestError) {
         const detail = requestError instanceof Error ? requestError.message : "요청 실패";
         setError(`AI 응답 연결 오류: ${detail}`);
@@ -978,12 +1027,27 @@ export function CallTab({
 
     if (event.type !== "response.done") return;
     const output = (event as RealtimeResponseDoneEvent).response?.output ?? [];
-    output.forEach((item) => {
-      if (item.type === "function_call" && "name" in item && item.name === "query_agent") {
-        setPipelineStatus("processing");
-        void queryAgent(item as RealtimeFunctionCall);
-      }
-    });
+    const isWebCallTool = (item: RealtimeFunctionCall | { type: string }) =>
+      item.type === "function_call" &&
+      "name" in item &&
+      (item.name === "search_knowledge" || item.name === "task_action");
+    const hasFunctionCall = output.some(isWebCallTool);
+    if (hasFunctionCall) {
+      output.forEach((item) => {
+        if (isWebCallTool(item)) {
+          setPipelineStatus("processing");
+          void queryAgent(item as RealtimeFunctionCall);
+        }
+      });
+      return;
+    }
+
+    // function_call이 없는 response.done은 직전 답변을 음성으로 다 읽은
+    // 시점이다 - AI가 종료를 요청했다면 여기서 끊어야 마지막 인사가 잘리지 않는다.
+    if (pendingAgentEndSessionRef.current) {
+      pendingAgentEndSessionRef.current = false;
+      endCallByAgent();
+    }
   };
 
   const sendTextMessage = async () => {
@@ -993,6 +1057,8 @@ export function CallTab({
     const textAbortController = new AbortController();
     textAbortControllerRef.current = textAbortController;
 
+    // sendTextMessage는 전송 버튼 클릭 핸들러에서만 호출되어 렌더 경로와 무관하다.
+    // eslint-disable-next-line react-hooks/purity
     const agentMessageId = `agent_${Date.now() + 1}`;
     if (callStatusRef.current !== "active" && callStatusRef.current !== "connecting") {
       setCallStatus("active");
@@ -1000,8 +1066,6 @@ export function CallTab({
       setCallSeconds(0);
       setIsTextCallActive(true);
       setVoiceCallActive(false);
-      // 텍스트로 시작한 대화는 음성 통화가 아니므로 /voice/call/start를
-      // 호출하지 않는다(emitCallStartedTrace는 실제 음성 통화 전용).
       onTrace?.({
         id: "voice_call_start",
         title: "상담 시작",
@@ -1016,8 +1080,8 @@ export function CallTab({
 
     if (isVoiceCallActiveRef.current && callStatusRef.current === "active" && voiceMode === "realtime") {
       // realtime 통화 중에는 LangGraph를 직접 부르지 않는다 - 모델이 data
-      // channel 메시지를 받아 스스로 query_agent를 호출하고 음성으로 답하며,
-      // queryAgent가 사용자/AI 메시지를 textMessages에 직접 기록한다.
+      // channel 메시지를 받아 스스로 search_knowledge/task_action을 호출하고
+      // 음성으로 답하며, queryAgent가 사용자/AI 메시지를 textMessages에 직접 기록한다.
       sendRealtimeTextMessage(message);
       return;
     }
@@ -1031,7 +1095,7 @@ export function CallTab({
     setIsSendingText(true);
 
     try {
-      const answer = await requestAgentAnswer(message, textAbortController.signal);
+      const { answer, shouldEndSession } = await requestAgentAnswer(message, textAbortController.signal);
       if (textAbortController.signal.aborted || callStatusRef.current !== "active") return;
       lastAnswerRef.current = answer;
       persistCallSession(answer);
@@ -1040,6 +1104,11 @@ export function CallTab({
       setTextMessages((messages) =>
         messages.map((item) => (item.id === agentMessageId ? { ...item, text: answer, isPending: false } : item)),
       );
+
+      if (shouldEndSession) {
+        endCallByAgent();
+        return;
+      }
 
       if (isVoiceCallActiveRef.current && callStatusRef.current === "active" && mediaStreamRef.current) {
         setPipelineStatus("listening");
@@ -1073,6 +1142,8 @@ export function CallTab({
     if (!isCurrentPipelineTurn(turnId)) return;
     setPipelineStatus("processing");
     setError(null);
+    // processRecordedAudio는 MediaRecorder.onstop 콜백에서만 호출되어 렌더 경로와 무관하다.
+    // eslint-disable-next-line react-hooks/purity
     const totalStartedAt = performance.now();
 
     try {
@@ -1112,6 +1183,7 @@ export function CallTab({
         title: "AI 응답",
         status: "done",
         detail: answer,
+        // eslint-disable-next-line react-hooks/purity -- processRecordedAudio는 렌더 경로와 무관(위 참고)
         elapsedMs: Math.round(performance.now() - totalStartedAt),
         items: [transcript],
       });
@@ -1132,6 +1204,7 @@ export function CallTab({
         title: "AI 응답",
         status: "warning",
         detail: message,
+        // eslint-disable-next-line react-hooks/purity -- processRecordedAudio는 렌더 경로와 무관(위 참고)
         elapsedMs: Math.round(performance.now() - totalStartedAt),
         items: lastTranscriptRef.current ? [lastTranscriptRef.current] : [],
       });
@@ -1172,6 +1245,8 @@ export function CallTab({
     const nextRecorder = new MediaRecorder(stream, preferredMimeType ? { mimeType: preferredMimeType } : undefined);
     recordedChunksRef.current = [];
     discardRecordingRef.current = false;
+    // startPipelineRecording은 VAD 인터벌 콜백에서만 호출되어 렌더 경로와 무관하다.
+    // eslint-disable-next-line react-hooks/purity
     recordingStartedAtRef.current = performance.now();
     nextRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) recordedChunksRef.current.push(event.data);
@@ -1307,6 +1382,7 @@ export function CallTab({
         },
       });
       mediaStreamRef.current = mediaStream;
+      setHasMediaStream(true);
 
       if (configuredMode === "pipeline") {
         audioElementRef.current = document.createElement("audio");
@@ -1342,7 +1418,8 @@ export function CallTab({
           emitCallStartedTrace();
         }
         // 사용자가 먼저 말하기를 기다리지 않고, 연결되면 상담원처럼 먼저 인사한다.
-        // tool_choice: none으로 보내 인사 turn에는 query_agent가 호출되지 않게 한다.
+        // tool_choice: none으로 보내 인사 turn에는 search_knowledge/task_action이
+        // 호출되지 않게 한다.
         requestRealtimeResponse({
           type: "response.create",
           response: {
@@ -1359,7 +1436,7 @@ export function CallTab({
         organization_id: organizationId,
         session_id: sessionIdRef.current,
       });
-      const realtimeResponse = await fetch(`${API_BASE}/voice/realtime?${realtimeParams}`, {
+      const realtimeResponse = await fetch(`${API_BASE}/web-call/realtime?${realtimeParams}`, {
         method: "POST",
         headers: { "Content-Type": "application/sdp" },
         signal: callAbortController.signal,
@@ -1430,7 +1507,6 @@ export function CallTab({
   };
 
   const isCallRunning = isVoiceCallActive && (callStatus === "connecting" || callStatus === "active");
-  const hasMediaStream = mediaStreamRef.current !== null;
   const pipelineStatusLabels = {
     idle: "듣는 중입니다...",
     listening: isTextCallActive && !hasMediaStream ? "텍스트 입력을 기다리는 중입니다..." : "듣는 중입니다...",
@@ -1541,7 +1617,7 @@ export function CallTab({
       <div className="flex min-h-0 flex-1 items-center justify-center px-2 py-4">
         <div className="flex w-full flex-col items-center text-center">
           <motion.div
-            layoutId="floating-call-orb"
+            layoutId={enableSharedLayout ? "floating-call-orb" : undefined}
             transition={orbTransition}
             onClick={isCallRunning ? undefined : startCall}
             className={`relative flex h-44 w-44 items-center justify-center overflow-hidden rounded-full bg-[#40c9f4] shadow-[0_22px_56px_rgb(14,165,233,0.3)] ${

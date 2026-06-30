@@ -1,11 +1,13 @@
 "use client";
 
+import type { User } from "@supabase/supabase-js";
+import { AiCosDetailPanel } from "../AiCosDetailPanel";
 import { AiCosKnowledgeSidebar } from "../AiCosKnowledgeSidebar";
 import { KnowledgePeekPane } from "./KnowledgePeekPane";
 import { KnowledgeSection } from "./KnowledgeSection";
 import { UNFILED_FOLDER_ID, useKnowledgeWorkspace } from "./useKnowledgeWorkspace";
 
-export function KnowledgeWorkspace({ organizationId }: { organizationId: string }) {
+export function KnowledgeWorkspace({ organizationId, user }: { organizationId: string; user?: User | null }) {
   const workspace = useKnowledgeWorkspace(organizationId);
 
   return (
@@ -43,6 +45,8 @@ export function KnowledgeWorkspace({ organizationId }: { organizationId: string 
           onDelete={workspace.handleDeleteKnowledge}
         />
       </div>
+
+      <AiCosDetailPanel activeSection="knowledge" organizationId={organizationId} user={user} />
 
       {workspace.peekSource && (
         <>

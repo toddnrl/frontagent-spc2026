@@ -1,8 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import type { User } from '@supabase/supabase-js'
 import { AnimatePresence, motion } from 'motion/react'
 import { LoginDialog } from '@/components/LoginDialog'
+import { isSupabaseReady, supabase } from '@/lib/supabase'
 
 const headerBaseClass =
   'pointer-events-auto w-full bg-white/60 backdrop-blur-[22px] backdrop-saturate-[180%]'
@@ -17,7 +20,24 @@ export default function Header() {
   const [hidden, setHidden] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
   const lastYRef = useRef(0)
+
+  useEffect(() => {
+    if (!isSupabaseReady) return
+
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null)
+    })
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => {
+      listener.subscription.unsubscribe()
+    }
+  }, [])
 
   useEffect(() => {
     if (!mobileMenuOpen) return
@@ -66,12 +86,35 @@ export default function Header() {
             <a className={navLinkClass} href="#developer">개발자 API</a>
           </nav>
           <div className="flex-1" />
-          <button
-            className="cursor-pointer rounded-lg border-0 bg-transparent px-[14px] py-[9px] !text-[14.5px] !font-semibold !text-[#4a5568] !transition-[background,color] !duration-150 hover:!bg-[#f0f2f5] hover:!text-[#16191f] max-[900px]:hidden"
-            onClick={() => setLoginOpen(true)}
-          >
-            로그인
-          </button>
+          {user ? (
+            <div className="flex items-center gap-1 max-[900px]:hidden">
+              <span className="flex items-center gap-2 px-[10px] py-[7px] !text-[14px] !font-semibold !text-[#4a5568]">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eef4ff] text-[12px] font-extrabold text-[#2f6bf0]">
+                  {(user.user_metadata?.name?.[0] ?? user.email?.[0] ?? 'U').toUpperCase()}
+                </span>
+                <span className="max-w-[140px] truncate">{user.user_metadata?.name ?? user.email}</span>
+              </span>
+              <Link
+                href="/admin"
+                className="cursor-pointer rounded-lg px-[14px] py-[9px] !text-[14.5px] !font-semibold !text-[#4a5568] !transition-[background,color] !duration-150 hover:!bg-[#f0f2f5] hover:!text-[#16191f]"
+              >
+                대시보드
+              </Link>
+              <button
+                className="cursor-pointer rounded-lg border-0 bg-transparent px-[14px] py-[9px] !text-[14.5px] !font-semibold !text-[#4a5568] !transition-[background,color] !duration-150 hover:!bg-[#f0f2f5] hover:!text-[#16191f]"
+                onClick={() => supabase.auth.signOut()}
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <button
+              className="cursor-pointer rounded-lg border-0 bg-transparent px-[14px] py-[9px] !text-[14.5px] !font-semibold !text-[#4a5568] !transition-[background,color] !duration-150 hover:!bg-[#f0f2f5] hover:!text-[#16191f] max-[900px]:hidden"
+              onClick={() => setLoginOpen(true)}
+            >
+              로그인
+            </button>
+          )}
           <button
             className="hidden h-[42px] w-[42px] cursor-pointer flex-col items-center justify-center gap-[5px] rounded-[9px] border-0 bg-transparent max-[900px]:flex"
             aria-label="메뉴"
@@ -111,16 +154,37 @@ export default function Header() {
                 <a className={mobileNavLinkClass} href="#rules" onClick={() => setMobileMenuOpen(false)}>규칙</a>
                 <a className={mobileNavLinkClass} href="#developer" onClick={() => setMobileMenuOpen(false)}>개발자 API</a>
               </nav>
-              <div className="shrink-0 px-5 pb-8">
-                <button
-                  className="w-full cursor-pointer rounded-xl border-0 bg-[var(--blue)] px-4 py-3.5 text-[16px] font-bold text-white"
-                  onClick={() => {
-                    setMobileMenuOpen(false)
-                    setLoginOpen(true)
-                  }}
-                >
-                  로그인
-                </button>
+              <div className="shrink-0 space-y-2 px-5 pb-8">
+                {user ? (
+                  <>
+                    <Link
+                      href="/admin"
+                      className="block w-full cursor-pointer rounded-xl bg-[#f0f2f5] px-4 py-3.5 text-center text-[16px] font-bold text-[#16191f]"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      대시보드
+                    </Link>
+                    <button
+                      className="w-full cursor-pointer rounded-xl border-0 bg-[#f0f2f5] px-4 py-3.5 text-[16px] font-bold text-[#16191f]"
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        supabase.auth.signOut()
+                      }}
+                    >
+                      로그아웃 ({user.user_metadata?.name ?? user.email})
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="w-full cursor-pointer rounded-xl border-0 bg-[var(--blue)] px-4 py-3.5 text-[16px] font-bold text-white"
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      setLoginOpen(true)
+                    }}
+                  >
+                    로그인
+                  </button>
+                )}
               </div>
             </motion.div>
           )}

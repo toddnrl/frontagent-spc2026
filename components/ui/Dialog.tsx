@@ -21,7 +21,13 @@ export function Dialog({
   children: ReactNode
 }) {
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  // createPortal은 document.body가 있는 클라이언트에서만 안전하다. SSR과의
+  // hydration mismatch를 피하려고 마운트 후 한 번만 true로 전환한다(정석적인
+  // client-mounted 패턴 — effect 콜백으로 감싸 동기 호출을 피한다).
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setMounted(true), 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [])
 
   useEffect(() => {
     if (!open) return

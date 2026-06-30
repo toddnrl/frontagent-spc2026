@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, AnimatePresence, LayoutGroup } from "motion/react";
+import { motion, LayoutGroup } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
@@ -69,18 +69,6 @@ export function FloatingButton() {
   const goToTab = (tabId: FloatingTab) => {
     setActiveTab(tabId);
     setIsCallTextMode(false);
-  };
-
-  const renderContent = () => {
-    if (activeTab === "home") return <HomeTab />;
-    if (activeTab === "settings") return <SettingsTab />;
-
-    return (
-      <CallTab
-        isTextMode={isCallTextMode}
-        onTextModeChange={setIsCallTextMode}
-      />
-    );
   };
 
   const goBack = () => {
@@ -160,7 +148,21 @@ export function FloatingButton() {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 p-4">{renderContent()}</div>
+      <div className="min-h-0 flex-1 p-4">
+        <div className={activeTab === "home" ? "h-full" : "hidden"}>
+          <HomeTab />
+        </div>
+        <div className={activeTab === "settings" ? "h-full" : "hidden"}>
+          <SettingsTab />
+        </div>
+        <div className={activeTab === "call" ? "h-full" : "hidden"}>
+          <CallTab
+            isTextMode={isCallTextMode}
+            enableSharedLayout={isOpen && activeTab === "call"}
+            onTextModeChange={setIsCallTextMode}
+          />
+        </div>
+      </div>
 
       {showBottomNav && (
         <div className="grid grid-cols-3 border-t border-gray-100 bg-white px-2 py-2">
@@ -191,47 +193,50 @@ export function FloatingButton() {
         ref={containerRef}
         className={`pointer-events-none fixed right-0 bottom-6 left-0 flex flex-col items-center sm:bottom-8 ${isOpen ? "z-[150]" : "z-50"}`}
       >
-        <AnimatePresence initial={false} mode="sync">
-          {isOpen ? (
-            <motion.div
-              key="floating-panel"
+        <motion.div
+          key="floating-panel"
+          layoutId={isOpen ? "floating-surface" : undefined}
+          initial={false}
+          animate={{ opacity: isOpen ? 1 : 0.96 }}
+          transition={surfaceTransition}
+          aria-hidden={!isOpen}
+          style={{
+            transformOrigin: "bottom center",
+            visibility: isOpen ? "visible" : "hidden",
+          }}
+          className={`fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:relative sm:inset-auto sm:h-[680px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100 ${
+            isOpen ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+        >
+          {renderPanelBody()}
+        </motion.div>
+
+        {!isOpen && (
+          <button
+            key="floating-cta"
+            type="button"
+            onClick={() => setIsOpen(true)}
+            aria-label="AI 상담원 체험하기"
+            className="pointer-events-auto group relative flex max-w-[calc(100vw-48px)] items-center gap-3 rounded-full py-2 pl-2 pr-5 text-[15px] font-extrabold text-gray-900 sm:gap-4 sm:py-3 sm:pl-3 sm:pr-7 sm:text-[18px]"
+          >
+            <motion.span
               layoutId="floating-surface"
-              initial={{ opacity: 0.96 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0.96 }}
               transition={surfaceTransition}
-              style={{ transformOrigin: "bottom center" }}
-              className="pointer-events-auto fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:relative sm:inset-auto sm:h-[680px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
+              className="absolute inset-0 rounded-full border border-gray-200 bg-white shadow-[0_10px_30px_rgb(17,24,39,0.10)] transition-shadow duration-300 group-hover:border-gray-300 group-hover:shadow-[0_14px_36px_rgb(17,24,39,0.14)]"
+            />
+            <motion.span
+              layoutId="floating-call-orb"
+              transition={orbTransition}
+              className="relative z-10 h-11 w-11 shrink-0 overflow-hidden rounded-full bg-[#40c9f4] shadow-[inset_0_0_18px_rgb(255,255,255,0.35)] sm:h-14 sm:w-14"
             >
-              {renderPanelBody()}
-            </motion.div>
-          ) : (
-            <button
-              key="floating-cta"
-              type="button"
-              onClick={() => setIsOpen(true)}
-              aria-label="AI 상담원 체험하기"
-              className="pointer-events-auto group relative flex max-w-[calc(100vw-48px)] items-center gap-3 rounded-full py-2 pl-2 pr-5 text-[15px] font-extrabold text-gray-900 sm:gap-4 sm:py-3 sm:pl-3 sm:pr-7 sm:text-[18px]"
-            >
-              <motion.span
-                layoutId="floating-surface"
-                transition={surfaceTransition}
-                className="absolute inset-0 rounded-full border border-gray-200 bg-white shadow-[0_10px_30px_rgb(17,24,39,0.10)] transition-shadow duration-300 group-hover:border-gray-300 group-hover:shadow-[0_14px_36px_rgb(17,24,39,0.14)]"
-              />
-              <motion.span
-                layoutId="floating-call-orb"
-                transition={orbTransition}
-                className="relative z-10 h-11 w-11 shrink-0 overflow-hidden rounded-full bg-[#40c9f4] shadow-[inset_0_0_18px_rgb(255,255,255,0.35)] sm:h-14 sm:w-14"
-              >
-                <ShaderOrb active={false} />
-                <span className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/25" />
-              </motion.span>
-              <span className="relative z-10 whitespace-nowrap leading-none">
-                AI 상담원 체험하기
-              </span>
-            </button>
-          )}
-        </AnimatePresence>
+              <ShaderOrb active={false} />
+              <span className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/25" />
+            </motion.span>
+            <span className="relative z-10 whitespace-nowrap leading-none">
+              AI 상담원 체험하기
+            </span>
+          </button>
+        )}
       </div>
     </LayoutGroup>
   );

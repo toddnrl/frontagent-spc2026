@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk 'NR==560,NR==576{print NR\": \"$0}' /Users/yujisan/Projects/frontagent-spc2026/components/home/floating/CallTab.tsx)",
+      "Bash(awk 'NR<=575 && /^  const [a-zA-Z]+ = async/{print NR\": \"$0}' /Users/yujisan/Projects/frontagent-spc2026/components/home/floating/CallTab.tsx)",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

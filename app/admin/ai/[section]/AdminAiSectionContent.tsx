@@ -13,11 +13,11 @@ export function AdminAiSectionContent({ section, label }: { section: AiCosSectio
   const organizationId = getOrganizationId(session.user);
 
   if (section === "knowledge") {
-    return <KnowledgeWorkspace organizationId={organizationId} />;
+    return <KnowledgeWorkspace organizationId={organizationId} user={session.user} />;
   }
 
   if (section === "rules") {
-    return <RulesWorkspace organizationId={organizationId} />;
+    return <RulesWorkspace organizationId={organizationId} user={session.user} />;
   }
 
   if (section === "logs") {
@@ -25,7 +25,7 @@ export function AdminAiSectionContent({ section, label }: { section: AiCosSectio
   }
 
   if (section === "tasks") {
-    return <TasksWorkspace organizationId={organizationId} />;
+    return <TasksWorkspace organizationId={organizationId} user={session.user} />;
   }
 
   return (

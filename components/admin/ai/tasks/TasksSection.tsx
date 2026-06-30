@@ -199,13 +199,13 @@ export function TasksSection({
           </div>
         </Card>
       ) : (
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {taskFlows.map((task) => (
-          <Card key={task.id} size="sm">
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <div className="mb-1 flex items-center gap-2">
-                  <h3 className="truncate text-[16px] font-bold">{task.name}</h3>
+          <Card key={task.id} size="sm" className="min-w-0 overflow-hidden">
+            <div className="flex min-w-0 items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h3 className="min-w-0 truncate text-[16px] font-bold">{task.name}</h3>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                       task.isEnabled ? "bg-blue-50 text-blue-600" : "bg-[#f2f2f2] text-gray-500"

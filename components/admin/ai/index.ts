@@ -1,4 +1,5 @@
 export { AiCosKnowledgeSidebar } from "./AiCosKnowledgeSidebar";
+export { AiCosSectionRail } from "./AiCosSectionRail";
 export { AiCosSectionSidebar } from "./AiCosSectionSidebar";
 export { aiSectionItems } from "./aiSections";
 export { KnowledgePeekPane } from "./knowledge/KnowledgePeekPane";
