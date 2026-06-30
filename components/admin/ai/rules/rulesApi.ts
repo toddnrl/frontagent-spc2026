@@ -1,4 +1,4 @@
-import { getAgentApiBaseUrl } from "../../../../lib/agentApiBase";
+import { getAgentApiBaseUrl, readAgentApiError } from "../../../../lib/agentApiBase";
 import type { RuleItem, RuleUpdateInput } from "../types";
 
 type RuleRecord = {
@@ -29,33 +29,11 @@ function mapRuleRecord(record: RuleRecord): RuleItem {
   };
 }
 
-async function readApiError(response: Response) {
-  const fallback = `HTTP ${response.status}`;
-
-  try {
-    const payload = (await response.json()) as { detail?: unknown; message?: unknown };
-    const detail = payload.detail ?? payload.message;
-
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) return detail.map((item) => JSON.stringify(item)).join(", ");
-    if (detail) return JSON.stringify(detail);
-  } catch {
-    try {
-      const text = await response.text();
-      if (text) return text;
-    } catch {
-      return fallback;
-    }
-  }
-
-  return fallback;
-}
-
 export async function fetchRules(organizationId: string) {
   const response = await fetch(`${getAgentApiBaseUrl()}/rules?organization_id=${encodeURIComponent(organizationId)}`);
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 
   const payload = (await response.json()) as { items?: RuleRecord[] };
@@ -76,7 +54,7 @@ export async function createRule({ organizationId, data }: { organizationId: str
   });
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 
   return mapRuleRecord((await response.json()) as RuleRecord);
@@ -104,7 +82,7 @@ export async function updateRule({
   );
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 
   return mapRuleRecord((await response.json()) as RuleRecord);
@@ -122,7 +100,7 @@ export async function deleteRule({ organizationId, ruleId }: { organizationId: s
   );
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 }
 
@@ -136,7 +114,7 @@ export async function resetBuiltinRule({ organizationId, ruleId }: { organizatio
   );
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 
   return mapRuleRecord((await response.json()) as RuleRecord);

@@ -21,3 +21,25 @@ export async function readAgentApiJson<T>(response: Response): Promise<T> {
 
   return (await response.json()) as T;
 }
+
+export async function readAgentApiError(response: Response) {
+  const fallback = `HTTP ${response.status}`;
+
+  try {
+    const payload = (await response.json()) as { detail?: unknown; message?: unknown };
+    const detail = payload.detail ?? payload.message;
+
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) return detail.map((item) => JSON.stringify(item)).join(", ");
+    if (detail) return JSON.stringify(detail);
+  } catch {
+    try {
+      const text = await response.text();
+      if (text) return text;
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
+}

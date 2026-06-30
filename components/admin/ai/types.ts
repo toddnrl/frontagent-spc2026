@@ -65,6 +65,96 @@ export type RuleCreateInput = {
 
 export type RuleUpdateInput = Partial<RuleCreateInput>;
 
+export type TaskFlow = {
+  id: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  triggerIntent?: string;
+  triggerDescription?: string;
+  triggerExamples: string[];
+  allowedChannels: string[];
+  filters: Record<string, unknown>;
+  isEnabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type TaskNode = {
+  id: string;
+  flowId: string;
+  nodeKey: string;
+  nodeType: string;
+  label: string;
+  config: Record<string, unknown>;
+  code?: string;
+  positionX: number;
+  positionY: number;
+  timeoutSeconds: number;
+  retryLimit: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type TaskEdge = {
+  id: string;
+  flowId: string;
+  sourceNodeKey: string;
+  targetNodeKey: string;
+  edgeType: string;
+  conditionType: string;
+  conditionConfig: Record<string, unknown>;
+  isFailureEdge: boolean;
+  priority: number;
+  createdAt?: string;
+};
+
+export type TaskEdgeUpdateInput = {
+  source_node_key?: string;
+  target_node_key?: string;
+  edge_type?: string;
+  condition_type?: string;
+  condition_config?: Record<string, unknown>;
+  is_failure_edge?: boolean;
+  priority?: number;
+};
+
+export type TaskFlowTestResult = {
+  status?: string;
+  response_messages?: string[];
+  current_node_key?: string | null;
+  task_session_id?: string | null;
+  variables?: Record<string, unknown>;
+  error?: Record<string, unknown> | string | null;
+};
+
+export type TaskFlowCreateInput = {
+  name: string;
+  description?: string | null;
+  trigger_intent?: string | null;
+  trigger_description?: string | null;
+  trigger_examples?: string[];
+  allowed_channels?: string[];
+  is_enabled: boolean;
+};
+
+export type TaskFlowUpdateInput = Partial<TaskFlowCreateInput>;
+
+export type TaskNodeCreateInput = {
+  node_key: string;
+  node_type: string;
+  label: string;
+  config: Record<string, unknown>;
+  position_x?: number;
+  position_y?: number;
+};
+
+export type TaskNodeUpdateInput = Partial<TaskNodeCreateInput> & {
+  code?: string | null;
+  timeout_seconds?: number;
+  retry_limit?: number;
+};
+
 export type AgentRun = {
   id: string;
   sessionId: string;

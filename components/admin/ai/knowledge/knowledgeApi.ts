@@ -1,4 +1,4 @@
-import { getAgentApiBaseUrl, readAgentApiJson } from "../../../../lib/agentApiBase";
+import { getAgentApiBaseUrl, readAgentApiError, readAgentApiJson } from "../../../../lib/agentApiBase";
 import type { KnowledgeChunk, KnowledgeFolder, KnowledgeSource } from "../types";
 
 type KnowledgeRecord = {
@@ -116,33 +116,11 @@ function mapKnowledgeChunkRecord(record: KnowledgeChunkRecord): KnowledgeChunk {
   };
 }
 
-async function readApiError(response: Response) {
-  const fallback = `HTTP ${response.status}`;
-
-  try {
-    const payload = (await response.json()) as { detail?: unknown; message?: unknown };
-    const detail = payload.detail ?? payload.message;
-
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) return detail.map((item) => JSON.stringify(item)).join(", ");
-    if (detail) return JSON.stringify(detail);
-  } catch {
-    try {
-      const text = await response.text();
-      if (text) return text;
-    } catch {
-      return fallback;
-    }
-  }
-
-  return fallback;
-}
-
 export async function fetchKnowledgeSources(organizationId: string) {
   const response = await fetch(`${getAgentApiBaseUrl()}/knowledge?organization_id=${encodeURIComponent(organizationId)}`);
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 
   const payload = await readAgentApiJson<{ items?: KnowledgeRecord[] }>(response);
@@ -153,7 +131,7 @@ export async function fetchKnowledgeFolders(organizationId: string) {
   const response = await fetch(`${getAgentApiBaseUrl()}/knowledge/folders?organization_id=${encodeURIComponent(organizationId)}`);
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 
   const payload = await readAgentApiJson<{ items?: KnowledgeFolderRecord[] }>(response);
@@ -196,7 +174,7 @@ export async function createKnowledgeSource({
   });
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 }
 
@@ -220,7 +198,7 @@ export async function uploadKnowledgeSource({
   });
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 
   return (await response.json()) as KnowledgeUploadResult;
@@ -246,7 +224,7 @@ export async function createKnowledgeFolder({
   });
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 
   return mapKnowledgeFolderRecord((await response.json()) as KnowledgeFolderRecord);
@@ -271,7 +249,7 @@ export async function updateKnowledgeFolder({
   );
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 
   return mapKnowledgeFolderRecord((await response.json()) as KnowledgeFolderRecord);
@@ -290,7 +268,7 @@ export async function deleteKnowledgeFolder({
   );
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 }
 
@@ -317,7 +295,7 @@ export async function updateKnowledgeSource({
   );
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 }
 
@@ -337,7 +315,7 @@ export async function deleteKnowledgeSource({
   );
 
   if (!response.ok) {
-    throw new Error(await readApiError(response));
+    throw new Error(await readAgentApiError(response));
   }
 }
 
@@ -358,7 +336,7 @@ export async function updateKnowledgeChunk({
       body: JSON.stringify({ content }),
     },
   );
-  if (!response.ok) throw new Error(await readApiError(response));
+  if (!response.ok) throw new Error(await readAgentApiError(response));
 }
 
 export async function deleteKnowledgeChunk({
@@ -372,5 +350,5 @@ export async function deleteKnowledgeChunk({
     `${getAgentApiBaseUrl()}/knowledge/chunks/${encodeURIComponent(chunkId)}?organization_id=${encodeURIComponent(organizationId)}`,
     { method: "DELETE", headers: { Accept: "application/json" } },
   );
-  if (!response.ok) throw new Error(await readApiError(response));
+  if (!response.ok) throw new Error(await readAgentApiError(response));
 }

@@ -24,7 +24,7 @@ export const aiSectionItems: AiSectionItem[] = [
   { section: "overview", label: "Dashboard", icon: BarChart3, isReady: false },
   { section: "rules", label: "규칙", icon: ShieldCheck, isReady: true },
   { section: "knowledge", label: "지식", icon: BookOpen, isReady: true },
-  { section: "tasks", label: "태스크", icon: GitBranch, isReady: false },
+  { section: "tasks", label: "태스크", icon: GitBranch, isReady: true },
   { section: "test", label: "AI Test Chat", icon: Bot, isReady: false },
   { section: "logs", label: "Agent Runs", icon: FileText, isReady: true },
   { section: "monitoring", label: "API Monitoring", icon: Activity, isReady: false },
