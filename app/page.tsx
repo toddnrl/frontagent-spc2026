@@ -3,7 +3,6 @@ import Hero from '@/components/Hero'
 import Features from '@/components/Features'
 import Functions from '@/components/Functions'
 import Advantages from '@/components/Advantages'
-import Industry from '@/components/Industry'
 import Solution from '@/components/Solution'
 import Evaluation from '@/components/EvaluationSection'
 import Dashboard from '@/components/Dashboard'
@@ -25,7 +24,6 @@ export default function Home() {
       <Functions titleVariant="knowledge" />
       <Functions titleVariant="tasks" />
       <Advantages />
-      <Industry />
       <Solution />
       <Evaluation />
       <Dashboard />

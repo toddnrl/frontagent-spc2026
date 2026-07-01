@@ -64,31 +64,32 @@ export function ShaderOrb({ active }: { active: boolean }) {
       void main() {
         vec2 uv = v_uv;
         vec2 p = uv - 0.5;
-        float t = u_time * (0.34 + u_active * 0.2);
-        float breath = 0.5 + 0.5 * sin(u_time * 2.3);
+        float t = u_time * (0.56 + u_active * 0.34);
+        float pulse = sin(u_time * 3.8 + fbm(p * 5.5) * 2.4);
+        float breath = 0.5 + 0.5 * pulse;
 
         vec2 warp = vec2(
-          fbm(p * 3.0 + vec2(t, -t * 0.7)),
-          fbm(p * 3.0 + vec2(-t * 0.55, t * 0.85))
+          fbm(p * 3.5 + vec2(t * 1.25, -t * 0.92)),
+          fbm(p * 3.5 + vec2(-t * 0.82, t * 1.18))
         ) - 0.5;
-        vec2 q = p + warp * (0.34 + u_active * 0.12);
+        vec2 q = p + warp * (0.43 + breath * 0.08 + u_active * 0.18);
 
         float lime = smoothstep(0.58, 0.02, length(q - vec2(-0.25, 0.18)));
         float cyan = smoothstep(0.66, 0.03, length(q - vec2(0.23, 0.20)));
         float blue = smoothstep(0.72, 0.04, length(q - vec2(0.17, -0.28)));
         float teal = smoothstep(0.62, 0.03, length(q - vec2(-0.28, -0.24)));
-        float cloud = fbm(q * 4.0 + t);
+        float cloud = fbm(q * 4.8 + vec2(t * 1.4, -t * 1.1));
 
         vec3 color = vec3(0.20, 0.76, 0.96);
         color = mix(color, vec3(0.74, 0.94, 0.32), lime * 0.9);
         color = mix(color, vec3(0.37, 0.86, 1.0), cyan);
         color = mix(color, vec3(0.02, 0.39, 0.70), blue * 0.85);
         color = mix(color, vec3(0.04, 0.72, 0.82), teal * 0.72);
-        color += (cloud - 0.5) * 0.2;
-        color *= 1.02 + breath * (0.08 + u_active * 0.16);
+        color += (cloud - 0.5) * (0.3 + u_active * 0.08);
+        color *= 1.02 + breath * (0.12 + u_active * 0.22);
 
-        float grain = hash(uv * u_resolution + u_time) * 0.08;
-        color += grain;
+        float paperWash = fbm(uv * 9.0 + vec2(t * 0.03, -t * 0.02)) - 0.5;
+        color += paperWash * 0.035;
 
         gl_FragColor = vec4(color, 1.0);
       }
@@ -168,6 +169,15 @@ export function ShaderOrb({ active }: { active: boolean }) {
       <canvas
         ref={canvasRef}
         className="absolute inset-0 h-full w-full rounded-full [clip-path:circle(50%)]"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 rounded-full opacity-35 mix-blend-soft-light [clip-path:circle(50%)]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(2deg, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 13px), repeating-linear-gradient(91deg, rgba(15,70,90,0.12) 0px, rgba(15,70,90,0.12) 1px, transparent 1px, transparent 19px)",
+          filter: "blur(0.35px)",
+        }}
         aria-hidden="true"
       />
       <AnimatePresence initial={false}>

@@ -174,6 +174,8 @@ export function CallTab({
   const speakingEffectHideTimerRef = useRef<number | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const realtimeResponseInProgressRef = useRef(false);
+  const pendingRealtimeResponseEventRef = useRef<Record<string, unknown> | null>(null);
   const handledCallIdsRef = useRef(new Set<string>());
   // AI가 should_end_session을 받았을 때, 마지막 인사 음성이 다 끝날 때까지
   // 끊지 않고 기다리기 위한 플래그. 다음 response.done(음성 출력 완료)에서 소비된다.
@@ -425,6 +427,8 @@ export function CallTab({
     if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
     mediaRecorderRef.current = null;
     recordedChunksRef.current = [];
+    realtimeResponseInProgressRef.current = false;
+    pendingRealtimeResponseEventRef.current = null;
 
     dataChannelRef.current?.close();
     dataChannelRef.current = null;
@@ -952,7 +956,13 @@ export function CallTab({
   };
 
   const requestRealtimeResponse = (event: Record<string, unknown> = { type: "response.create" }) => {
+    if (callStatusRef.current !== "active") return;
+    if (event.type === "response.create" && realtimeResponseInProgressRef.current) {
+      pendingRealtimeResponseEventRef.current = event;
+      return;
+    }
     setRealtimeMicrophoneEnabled(false);
+    if (event.type === "response.create") realtimeResponseInProgressRef.current = true;
     sendRealtimeEvent(event);
   };
 
@@ -1035,10 +1045,21 @@ export function CallTab({
       return;
     }
 
+    if (event.type?.startsWith("response.") && event.type !== "response.done") {
+      realtimeResponseInProgressRef.current = true;
+    }
+
     if (event.type === "error") {
       const realtimeError = event as RealtimeErrorEvent;
+      if (callStatusRef.current === "ended") return;
+      const errorMessage = realtimeError.error?.message ?? "실시간 음성 처리 오류가 발생했습니다.";
+      if (errorMessage.includes("active response in progress")) {
+        realtimeResponseInProgressRef.current = true;
+        return;
+      }
+      realtimeResponseInProgressRef.current = false;
       setRealtimeMicrophoneEnabled(true);
-      setError(realtimeError.error?.message ?? "실시간 음성 처리 오류가 발생했습니다.");
+      setError(errorMessage);
       return;
     }
 
@@ -1067,6 +1088,7 @@ export function CallTab({
         event.type === "response.created" ||
         event.type === "response.output_item.added"
       ) {
+        if (event.type === "response.created") realtimeResponseInProgressRef.current = true;
         setPipelineStatus("processing");
         return;
       }
@@ -1077,6 +1099,7 @@ export function CallTab({
     }
 
     if (event.type !== "response.done") return;
+    realtimeResponseInProgressRef.current = false;
     const output = (event as RealtimeResponseDoneEvent).response?.output ?? [];
     const isWebCallTool = (item: RealtimeFunctionCall | { type: string }) =>
       item.type === "function_call" &&
@@ -1098,6 +1121,13 @@ export function CallTab({
     if (pendingAgentEndSessionRef.current) {
       pendingAgentEndSessionRef.current = false;
       endCallByAgent();
+      return;
+    }
+
+    const pendingRealtimeResponseEvent = pendingRealtimeResponseEventRef.current;
+    if (pendingRealtimeResponseEvent) {
+      pendingRealtimeResponseEventRef.current = null;
+      requestRealtimeResponse(pendingRealtimeResponseEvent);
     }
   };
 
@@ -1640,6 +1670,10 @@ export function CallTab({
   const endCall = () => {
     if (callStatusRef.current !== "active" && callStatusRef.current !== "connecting") return;
     callStatusRef.current = "ended";
+    if (voiceMode === "realtime" && realtimeResponseInProgressRef.current) {
+      sendRealtimeEvent({ type: "response.cancel" });
+      realtimeResponseInProgressRef.current = false;
+    }
     emitCallEndedTrace();
     releaseCallResources();
     setVoiceCallActive(false);
@@ -1776,7 +1810,7 @@ export function CallTab({
             <ShaderOrb active={isSpeakingEffectVisible} />
             <span
               aria-hidden="true"
-              className="absolute inset-0 opacity-[0.18] mix-blend-soft-light [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.85)_1px,transparent_0)] [background-size:4px_4px]"
+              className="absolute inset-0 opacity-[0.22] mix-blend-soft-light [background-image:linear-gradient(102deg,rgba(255,255,255,0.22)_0%,transparent_34%,rgba(12,83,103,0.16)_67%,transparent_100%),repeating-linear-gradient(6deg,rgba(255,255,255,0.12)_0px,rgba(255,255,255,0.12)_1px,transparent_1px,transparent_18px)]"
             />
             <span className="absolute inset-0 bg-white/5" />
             {callStatus === "connecting" && (
