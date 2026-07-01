@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import type { FormEvent, ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { loadActiveCallSession } from "../../../lib/callSessionStorage";
 import { getAgentApiBaseUrl } from "../../../lib/agentApiBase";
@@ -410,6 +410,16 @@ function AiPreviewChat({
           ]),
         });
       });
+      return;
+    }
+
+    if (event.id === "voice_answer_preview" && voiceTurnRef.current) {
+      // 답변 텍스트가 정해진 즉시(TTS 재생 전) agent 메시지를 채운다 - AI가
+      // 말하는 동안에도 trace 패널에 응답 내용이 비어 보이지 않게 한다.
+      const turn = voiceTurnRef.current;
+      setVoiceLog((current) =>
+        updateLogEntry(current, turn.agentEntryId, { text: event.detail }),
+      );
       return;
     }
 
@@ -885,12 +895,14 @@ function readStreamingObjectArray(value: unknown) {
     : [];
 }
 
+const chatTimeFormatter = new Intl.DateTimeFormat("ko-KR", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+
 function formatChatTime(value: number | Date = Date.now()) {
-  return new Intl.DateTimeFormat("ko-KR", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(value);
+  return chatTimeFormatter.format(value);
 }
 
 const VOICE_TRACE_ORDER: Record<string, number> = {
@@ -967,6 +979,79 @@ type PreviewLogEntry = {
   traceSteps?: TraceStep[];
 };
 
+const PreviewLogEntryItem = memo(function PreviewLogEntryItem({
+  entry,
+  isLatestCustomer,
+  showTraces,
+}: {
+  entry: PreviewLogEntry;
+  isLatestCustomer: boolean;
+  showTraces: boolean;
+}) {
+  if (entry.from === "customer") {
+    return (
+      <div>
+        <div className="ml-auto flex max-w-[86%] flex-col items-end">
+          {isThinkingMessage(entry) ? (
+            <div className="flex items-center gap-1 rounded-[16px] rounded-br-[4px] bg-blue-400 px-3 py-3">
+              {[0, 1, 2].map((dot) => (
+                <motion.span
+                  key={dot}
+                  animate={{ y: [0, -3, 0], opacity: [0.35, 1, 0.35] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: dot * 0.14 }}
+                  className="h-1.5 w-1.5 rounded-full bg-white"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="whitespace-pre-line rounded-[16px] rounded-br-[4px] bg-blue-500 px-3 py-2 text-[12px] font-bold leading-relaxed text-white">
+              {entry.text}
+            </div>
+          )}
+          <div className="mt-1 px-1 text-[10px] font-bold text-gray-400">
+            {formatCustomerMeta(entry)}
+          </div>
+        </div>
+        {showTraces && entry.traceSteps && entry.traceSteps.length > 0 && (
+          <TraceGraph
+            steps={entry.traceSteps}
+            intent={entry.resultIntent}
+            defaultOpen={isLatestCustomer}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex max-w-[86%] flex-col items-start">
+      {isThinkingMessage(entry) ? (
+        <div className="flex items-center gap-1 rounded-[16px] rounded-bl-[4px] bg-gray-100 px-3 py-3">
+          {[0, 1, 2].map((dot) => (
+            <motion.span
+              key={dot}
+              animate={{ y: [0, -3, 0], opacity: [0.35, 1, 0.35] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: dot * 0.14 }}
+              className="h-1.5 w-1.5 rounded-full bg-gray-400"
+            />
+          ))}
+        </div>
+      ) : (
+        <div
+          className={`whitespace-pre-line rounded-[16px] rounded-bl-[4px] px-3 py-2 text-[12px] font-bold leading-relaxed ${
+            entry.matchedRules ? "bg-blue-50 text-blue-900" : "bg-gray-100 text-gray-800"
+          }`}
+        >
+          {entry.text}
+        </div>
+      )}
+      <div className="mt-1 px-1 text-[10px] font-bold text-gray-400">
+        {formatAgentMeta(entry)}
+      </div>
+    </div>
+  );
+});
+
 function PreviewConversationLog({
   entries,
   showTraces = true,
@@ -979,71 +1064,14 @@ function PreviewConversationLog({
 
   return (
     <div className="space-y-2 px-1 py-2">
-      {entries.map((entry) => {
-        const isLatestCustomer = entry.from === "customer" && entry.id === latestCustomerId;
-        return (
-          <div key={entry.id}>
-            {entry.from === "customer" ? (
-              <>
-                <div className="ml-auto flex max-w-[86%] flex-col items-end">
-                  {isThinkingMessage(entry) ? (
-                    <div className="flex items-center gap-1 rounded-[16px] rounded-br-[4px] bg-blue-400 px-3 py-3">
-                      {[0, 1, 2].map((dot) => (
-                        <motion.span
-                          key={dot}
-                          animate={{ y: [0, -3, 0], opacity: [0.35, 1, 0.35] }}
-                          transition={{ duration: 0.8, repeat: Infinity, delay: dot * 0.14 }}
-                          className="h-1.5 w-1.5 rounded-full bg-white"
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="whitespace-pre-line rounded-[16px] rounded-br-[4px] bg-blue-500 px-3 py-2 text-[12px] font-bold leading-relaxed text-white">
-                      {entry.text}
-                    </div>
-                  )}
-                  <div className="mt-1 px-1 text-[10px] font-bold text-gray-400">
-                    {formatCustomerMeta(entry)}
-                  </div>
-                </div>
-                {showTraces && entry.traceSteps && entry.traceSteps.length > 0 && (
-                  <TraceGraph
-                    steps={entry.traceSteps}
-                    intent={entry.resultIntent}
-                    defaultOpen={isLatestCustomer}
-                  />
-                )}
-              </>
-            ) : (
-              <div className="flex max-w-[86%] flex-col items-start">
-                {isThinkingMessage(entry) ? (
-                  <div className="flex items-center gap-1 rounded-[16px] rounded-bl-[4px] bg-gray-100 px-3 py-3">
-                    {[0, 1, 2].map((dot) => (
-                      <motion.span
-                        key={dot}
-                        animate={{ y: [0, -3, 0], opacity: [0.35, 1, 0.35] }}
-                        transition={{ duration: 0.8, repeat: Infinity, delay: dot * 0.14 }}
-                        className="h-1.5 w-1.5 rounded-full bg-gray-400"
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div
-                    className={`whitespace-pre-line rounded-[16px] rounded-bl-[4px] px-3 py-2 text-[12px] font-bold leading-relaxed ${
-                      entry.matchedRules ? "bg-blue-50 text-blue-900" : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {entry.text}
-                  </div>
-                )}
-                <div className="mt-1 px-1 text-[10px] font-bold text-gray-400">
-                  {formatAgentMeta(entry)}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {entries.map((entry) => (
+        <PreviewLogEntryItem
+          key={entry.id}
+          entry={entry}
+          isLatestCustomer={entry.from === "customer" && entry.id === latestCustomerId}
+          showTraces={showTraces}
+        />
+      ))}
     </div>
   );
 }

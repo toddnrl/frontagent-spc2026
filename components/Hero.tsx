@@ -162,13 +162,13 @@ const heroTextAreaClass =
 const heroCenterClass =
   "flex w-full items-center justify-center bg-white [font-family:'Pretendard',-apple-system,sans-serif]";
 const heroInnerClass =
-  "mt-[120px] flex w-full min-w-0 max-w-[1600px] flex-col items-center text-center";
+  "mt-[160px] flex w-full min-w-0 max-w-[1600px] flex-col items-center text-center";
 const headlineClass =
-  "m-0 w-full max-w-[1600px] text-center text-[clamp(42px,6.4vw,78px)] font-extrabold leading-[1.22] tracking-[-0.03em] text-[#191919] [overflow-wrap:break-word] [word-break:keep-all] max-[600px]:text-[38px] max-[600px]:leading-[1.24]";
+  "m-0 w-full max-w-[1600px] text-center text-[clamp(42px,6.4vw,78px)] font-bold leading-[1.22] tracking-[-0.03em] text-[#191919] [overflow-wrap:break-word] [word-break:keep-all] max-[600px]:text-[38px] max-[600px]:leading-[1.24]";
 const headlinePillClass =
   "mx-[6px] inline-flex items-center justify-center gap-[5px] rounded-full bg-[#d3e4f7] px-[0.16em] pt-[0.06em] pb-[0.1em] align-middle font-extrabold leading-[1.08] text-[#191919]";
 const subheadlineClass =
-  "mt-[28px] mb-0 text-[20px] font-medium tracking-[-0.01em] text-[#5c5c5c] max-[600px]:text-[16px]";
+  "mt-[28px] mb-[20px] text-[20px] font-medium tracking-[-0.01em] text-[#5c5c5c] max-[600px]:text-[16px]";
 const uiGradientInnerClass = "w-full rounded-[42px]";
 const uiPreviewWrapClass =
   "mx-auto flex w-full max-w-[500px] flex-col items-center gap-[22px]";
@@ -426,7 +426,7 @@ export default function Hero() {
       <div className={heroCenterClass}>
         <div className={heroInnerClass}>
           {/* Avatar row */}
-          <div className="mb-8 flex flex-wrap justify-center gap-2.5">
+          <div className="mb-8 flex flex-wrap justify-center">
             {(
               [
                 {
@@ -480,7 +480,11 @@ export default function Hero() {
                 icon = <IC size={28} color={a.color} aria-label={a.label} />;
               }
               return (
-                <div key={i} className={`${avatarClass} ${a.className}`}>
+                <div
+                  key={i}
+                  className={`${avatarClass} ${a.className} ${i > 0 ? "-ml-3" : ""}`}
+                  style={{ zIndex: i }}
+                >
                   {icon}
                 </div>
               );
@@ -500,7 +504,7 @@ export default function Hero() {
           </h1>
 
           <p className={subheadlineClass}>
-            챗봇과 통화로, 실제 비즈니스 환경에서 필요한 기능들을 경험하세요.
+            전화와 채팅, 콜비가 24시간 대신 받고 예약까지 끝내드려요.
           </p>
 
           {/* Product UI preview */}

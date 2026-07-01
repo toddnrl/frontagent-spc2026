@@ -30,5 +30,5 @@ export const aiSectionItems: AiSectionItem[] = [
   { section: "monitoring", label: "API Monitoring", icon: Activity, isReady: false },
   { section: "status", label: "Status Page", icon: Server, isReady: false },
   { section: "docs", label: "Developer Docs", icon: Code2, isReady: false },
-  { section: "settings", label: "Agent 설정", icon: Settings, isReady: false },
+  { section: "settings", label: "Agent 설정", icon: Settings, isReady: true },
 ];

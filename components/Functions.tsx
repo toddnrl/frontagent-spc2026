@@ -632,7 +632,7 @@ export default function Section3({ titleVariant = 'rules' }: Section3Props) {
   const [mode, setMode] = useState<'before' | 'after'>('after')
 
   return (
-    <section className={`${pageSectionShell} relative overflow-hidden`} id={sectionId}>
+    <section className={`${pageSectionShell} relative sm:overflow-hidden`} id={sectionId}>
       {/* White diagonal gradient decorations */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute -left-24 -top-32 h-[420px] w-[700px] rotate-[22deg] bg-[linear-gradient(to_right,rgba(255,255,255,0.09),transparent)]" />

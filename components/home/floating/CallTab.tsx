@@ -11,23 +11,27 @@ import { ShaderOrb } from "./ShaderOrb";
 const API_BASE = getAgentApiBaseUrl();
 const ORG_ID = getEmbedOrganizationId();
 const ADMIN_MESSAGE_POLL_INTERVAL_MS = 4000;
-const MIN_RECORDING_MS = 500;
+const MIN_RECORDING_MS = 300;
 const MAX_RECORDING_MS = 15000;
 const MIN_AUDIO_BYTES = 1024;
+const SPEAKING_EFFECT_MIN_MS = 700;
+// 무음 대기 recorder가 이 시간 이상 침묵 상태면 리프레시한다 - 발화 시작
+// 전 prebuffer는 살리되, 무음이 무한정 누적돼 STT가 흔들리는 것을 막는다.
+const LISTENING_RECORDER_REFRESH_MS = 3000;
 const VAD_INTERVAL_MS = 80;
-const VAD_START_THRESHOLD = 0.035;
-const VAD_STOP_THRESHOLD = 0.02;
-// 말이 끝나면 더 빨리 턴을 종료해 즉답 느낌을 준다(너무 짧으면 말 중간 끊김).
-const VAD_SILENCE_MS = 600;
-const BARGE_IN_START_THRESHOLD = 0.055;
-const BARGE_IN_MIN_FRAMES = 3;
+// 잡음 오인식 방지: 0.035 → 0.05. 키보드/배경음 등 생활 소음이 0.03~0.04
+// 수준이라 그 이하로 잡으면 잡음을 발화로 처리한다.
+const VAD_START_THRESHOLD = 0.05;
+const VAD_STOP_THRESHOLD = 0.025;
+// 600ms → 400ms: 말 끝나고 빠르게 턴 종료해 응답 체감을 줄인다.
+const VAD_SILENCE_MS = 400;
+// 잡음 오인식 방지: 발화 판정 프레임을 2 → 4로 올린다(320ms 이상 지속된
+// 소리만 발화로 인정). 160ms 순간 잡음은 걸러지고 실제 말은 충분히 잡힌다.
+const VAD_START_MIN_FRAMES = 4;
+const BARGE_IN_START_THRESHOLD = 0.065;
+const BARGE_IN_MIN_FRAMES = 4;
 const IDLE_WARNING_MS = 30000;
 const IDLE_END_AFTER_WARNING_MS = 15000;
-const HOLDING_MESSAGES = [
-  "확인해보겠습니다.",
-  "관련 내용을 확인하고 말씀드리겠습니다.",
-  "조금만 기다려 주세요. 확인 중입니다.",
-];
 
 const orbTransition = {
   layout: { type: "tween" as const, duration: 0.42, ease: [0.22, 1, 0.36, 1] as const },
@@ -156,6 +160,7 @@ export function CallTab({
   const [textMessages, setTextMessages] = useState<TextMessage[]>([]);
   const [isSendingText, setIsSendingText] = useState(false);
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>("idle");
+  const [isSpeakingEffectVisible, setIsSpeakingEffectVisible] = useState(false);
   const [isTextCallActive, setIsTextCallActive] = useState(false);
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("pipeline");
@@ -164,6 +169,9 @@ export function CallTab({
   const isVoiceCallActiveRef = useRef(false);
   const callSecondsRef = useRef(0);
   const pipelineStatusRef = useRef<PipelineStatus>("idle");
+  const speakingEffectVisibleRef = useRef(false);
+  const speakingEffectShownAtRef = useRef(0);
+  const speakingEffectHideTimerRef = useRef<number | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const handledCallIdsRef = useRef(new Set<string>());
@@ -183,6 +191,14 @@ export function CallTab({
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const silenceStartedAtRef = useRef<number | null>(null);
+  // recorder가 "말하기 turn"으로 멈췄는지(처리해서 보내야 함), 아니면 그냥
+  // 대기용 무음 recorder로 멈췄는지(폐기) 구분한다. setPipelineStatus는 비동기라
+  // recorder.onstop 시점에 최신값이 아닐 수 있어 별도 ref로 동기 관리한다.
+  const isSpeechTurnRef = useRef(false);
+  // recordingStartedAtRef는 무음 대기 recorder가 시작된 시각이라 MIN_RECORDING_MS
+  // 가드("발화가 최소 이만큼은 지속됐는가")에 쓸 수 없다 - 발화가 감지된 시각을
+  // 별도로 기록한다.
+  const speechTurnStartedAtRef = useRef(0);
   const speechFramesRef = useRef(0);
   const bargeInFramesRef = useRef(0);
   const idleWarningTimerRef = useRef<number | null>(null);
@@ -190,7 +206,6 @@ export function CallTab({
   const idleWarningPlayedRef = useRef(false);
   const callAbortControllerRef = useRef<AbortController | null>(null);
   const textAbortControllerRef = useRef<AbortController | null>(null);
-  const holdingMessageIndexRef = useRef(0);
   const pipelineTurnIdRef = useRef(0);
   const activeTurnAbortControllerRef = useRef<AbortController | null>(null);
   const pendingInterruptContextRef = useRef<string | null>(null);
@@ -287,6 +302,37 @@ export function CallTab({
   }, [pipelineStatus]);
 
   useEffect(() => {
+    const isSpeaking = isVoiceCallActive && callStatus === "active" && pipelineStatus === "speaking";
+    if (speakingEffectHideTimerRef.current !== null) {
+      window.clearTimeout(speakingEffectHideTimerRef.current);
+      speakingEffectHideTimerRef.current = null;
+    }
+
+    if (isSpeaking) {
+      speakingEffectShownAtRef.current = performance.now();
+      speakingEffectVisibleRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 말하기 웨이브 exit 애니메이션을 위해 표시 상태를 최소 시간 유지한다.
+      setIsSpeakingEffectVisible(true);
+      return;
+    }
+
+    if (!speakingEffectVisibleRef.current) return;
+    const elapsedMs = performance.now() - speakingEffectShownAtRef.current;
+    const remainingMs = Math.max(0, SPEAKING_EFFECT_MIN_MS - elapsedMs);
+    speakingEffectHideTimerRef.current = window.setTimeout(() => {
+      speakingEffectHideTimerRef.current = null;
+      speakingEffectVisibleRef.current = false;
+      setIsSpeakingEffectVisible(false);
+    }, remainingMs);
+  }, [callStatus, isVoiceCallActive, pipelineStatus]);
+
+  useEffect(() => {
+    return () => {
+      if (speakingEffectHideTimerRef.current !== null) window.clearTimeout(speakingEffectHideTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isVoiceCallActiveRef.current || callStatus !== "active") return;
 
     const interval = window.setInterval(() => {
@@ -321,6 +367,7 @@ export function CallTab({
     releaseCallResources();
     setVoiceCallActive(false);
     setCallStatus("ended");
+    onTextModeChange?.(false);
     notifyCallEnded();
   };
 
@@ -487,12 +534,6 @@ export function CallTab({
     }
   };
 
-  const nextHoldingMessage = () => {
-    const message = HOLDING_MESSAGES[holdingMessageIndexRef.current % HOLDING_MESSAGES.length];
-    holdingMessageIndexRef.current += 1;
-    return message;
-  };
-
   const blobFromBase64 = (base64: string, contentType: string) => {
     const binary = window.atob(base64);
     const bytes = new Uint8Array(binary.length);
@@ -520,6 +561,7 @@ export function CallTab({
     signal: AbortSignal,
     interruptContext: string | null,
     onTranscript?: (transcript: string) => void,
+    onAnswerReady?: (answer: string) => void,
   ) => {
     const formData = new FormData();
     formData.append("organization_id", organizationId);
@@ -549,13 +591,8 @@ export function CallTab({
     let transcript = "";
     let streamedText = "";
     let finalAnswer = "";
+    let shouldEndSession = false;
     let streamConversationId: string | null = null;
-    let knowledgeNoticePromise: Promise<void> | null = null;
-    let didPlayKnowledgeNotice = false;
-    // requestPipelineTurnStream은 녹음 종료 이벤트에서만 호출되는 비동기 함수라
-    // 렌더 경로에서 실행되지 않는다(react-hooks/purity는 컴포넌트 본문에 정의된
-    // 함수를 보수적으로 렌더 가능 경로로 취급해 오탐한다).
-    // eslint-disable-next-line react-hooks/purity
     let lastSseEventAt = performance.now();
 
     const emitPipelineTrace = (event: VoiceTraceEvent) => {
@@ -573,7 +610,6 @@ export function CallTab({
     let nextAudioIndex = 0;
     let audioStreamEnded = false;
     let playerActive = false;
-    let knowledgeNoticeAwaited = false;
     let resolvePlayback: (() => void) | null = null;
     const playbackDone = new Promise<void>((resolve) => {
       resolvePlayback = resolve;
@@ -591,11 +627,6 @@ export function CallTab({
       if (playerActive) return;
       playerActive = true;
       try {
-        // 보류 안내(확인 중...) 음성이 있으면 답변 청크보다 먼저 끝까지 재생한다.
-        if (!knowledgeNoticeAwaited && knowledgeNoticePromise) {
-          knowledgeNoticeAwaited = true;
-          await knowledgeNoticePromise;
-        }
         while (isCurrentPipelineTurn(turnId)) {
           const chunk = audioChunks.get(nextAudioIndex);
           if (!chunk) break; // 다음 청크 도착 시(또는 audio_end 시) 다시 깨운다.
@@ -624,12 +655,21 @@ export function CallTab({
         publishConversationUpdate(streamConversationId, transcript || undefined);
       }
 
+      if (event === "turn_start") {
+        // 서버가 업로드 받은 오디오 처리를 시작한 시점 - "음성 업로드 준비"(전송
+        // 직전)와 "음성 인식 완료" 사이에 끼워 넣으면, 그 구간에 숨어있던 네트워크
+        // 업로드 시간과 순수 STT 처리 시간을 구분해서 볼 수 있다.
+        emitPipelineTrace({ id: "voice_turn_start", title: "서버 도착", status: "done", detail: "업로드된 음성을 받았습니다." });
+        return;
+      }
+
       if (event === "transcript") {
         transcript = typeof data.text === "string" ? data.text.trim() : "";
         if (transcript) {
           lastTranscriptRef.current = transcript;
           emitPipelineTrace({ id: "voice_stt", title: "음성 인식", status: "done", detail: transcript });
           onTranscript?.(transcript);
+          if (isCurrentPipelineTurn(turnId)) setPipelineStatus("processing");
         }
         return;
       }
@@ -655,18 +695,6 @@ export function CallTab({
           detail: "답변에 필요한 정보를 확인합니다.",
           items: Array.isArray(data.queries) ? data.queries : [],
         });
-
-        if (!didPlayKnowledgeNotice && isCurrentPipelineTurn(turnId)) {
-          didPlayKnowledgeNotice = true;
-          knowledgeNoticePromise = playSpeech(nextHoldingMessage(), "voice_knowledge_notice", "지식 확인 안내", { turnId, signal })
-            .catch((noticeError) => {
-              const noticeDetail = noticeError instanceof Error ? noticeError.message : "지식 확인 안내 음성 생성 실패";
-              onTrace?.({ id: "voice_knowledge_notice_failed", title: "지식 확인 안내 실패", status: "warning", detail: noticeDetail });
-            })
-            .finally(() => {
-              if (isCurrentPipelineTurn(turnId)) setPipelineStatus("processing");
-            });
-        }
         return;
       }
 
@@ -692,11 +720,17 @@ export function CallTab({
       if (event === "result") {
         if (typeof data.transcript === "string") transcript = data.transcript.trim();
         if (typeof data.answer === "string") finalAnswer = data.answer.trim();
+        if (data.should_end_session === true) shouldEndSession = true;
+        // 답변 텍스트는 여기서 이미 확정되지만, 이 함수는 TTS 재생까지 끝나야
+        // 반환된다(아래 playbackDone). AI가 말하는 동안 trace/텍스트가 비어
+        // 보이지 않도록, 재생을 기다리지 않고 텍스트가 정해지는 즉시 알린다.
+        if (finalAnswer) onAnswerReady?.(finalAnswer);
         return;
       }
 
       if (event === "ai_disabled" && typeof data.message === "string") {
         finalAnswer = data.message.trim();
+        if (finalAnswer) onAnswerReady?.(finalAnswer);
         return;
       }
 
@@ -716,7 +750,6 @@ export function CallTab({
     buffer += decoder.decode();
     if (buffer.trim()) await handleEvent(buffer);
 
-    if (knowledgeNoticePromise) await knowledgeNoticePromise;
     // audio_end가 없는 경로(에러 등)에서도 재생 대기가 풀리도록 종료를 보장한다.
     audioStreamEnded = true;
     void playQueuedAudio();
@@ -730,6 +763,7 @@ export function CallTab({
       transcript: transcript.trim(),
       answer: answer.trim(),
       conversationId: streamConversationId ?? conversationIdRef.current,
+      shouldEndSession,
     };
   };
 
@@ -795,13 +829,20 @@ export function CallTab({
     await playAudioBlob(speechBlob, options.turnId);
   };
 
+  const OPENING_GREETING = "안녕하세요, Callbee입니다. 무엇을 도와드릴까요?";
+
   const playOpeningGreeting = async () => {
     try {
       startRingbackTone();
-      await playSpeech("안녕하세요. 무엇을 도와드릴까요?", "voice_opening", "상담 시작 안내", {
+      await playSpeech(OPENING_GREETING, "voice_opening", "상담 시작 안내", {
         signal: callAbortControllerRef.current?.signal,
         requireActiveCall: true,
       });
+      // 인사 텍스트를 대화 내역에 추가한다.
+      setTextMessages((messages) => [
+        { id: `agent_opening_${Date.now()}`, role: "agent", text: OPENING_GREETING },
+        ...messages,
+      ]);
     } catch (greetingError) {
       if (greetingError instanceof DOMException && greetingError.name === "AbortError") return;
       const message = greetingError instanceof Error ? greetingError.message : "상담 시작 안내 음성 생성 실패";
@@ -894,6 +935,7 @@ export function CallTab({
     releaseCallResources();
     setVoiceCallActive(false);
     setCallStatus("ended");
+    onTextModeChange?.(false);
     notifyCallEnded();
   };
 
@@ -958,6 +1000,15 @@ export function CallTab({
       }
     }
     setTextMessages((messages) => [...messages, { id: `agent_${Date.now()}`, role: "agent", text: answer }]);
+
+    // end_session이면 Realtime에 응답 생성을 요청하지 않고 바로 끊는다.
+    // "active response in progress" 에러를 피하고, 마지막 인사 텍스트는
+    // 이미 textMessages에 추가했으므로 음성 재생 없이 종료해도 자연스럽다.
+    if (pendingAgentEndSessionRef.current) {
+      pendingAgentEndSessionRef.current = false;
+      endCallByAgent();
+      return;
+    }
 
     sendRealtimeEvent({
       type: "conversation.item.create",
@@ -1100,7 +1151,6 @@ export function CallTab({
       lastAnswerRef.current = answer;
       persistCallSession(answer);
 
-      // 텍스트로 시작한 대화는 음성 합성을 기다리지 않고 즉시 답변을 보여준다.
       setTextMessages((messages) =>
         messages.map((item) => (item.id === agentMessageId ? { ...item, text: answer, isPending: false } : item)),
       );
@@ -1110,11 +1160,14 @@ export function CallTab({
         return;
       }
 
-      if (isVoiceCallActiveRef.current && callStatusRef.current === "active" && mediaStreamRef.current) {
+      // 음성 통화 중 채팅으로 질문한 경우에는 텍스트뿐 아니라 음성으로도 읽어준다.
+      if (isVoiceCallActiveRef.current && callStatusRef.current === "active") {
+        void playSpeech(answer, "voice_text_answer", "AI 응답(채팅)", {
+          signal: textAbortController.signal,
+          requireActiveCall: true,
+        });
         setPipelineStatus("listening");
         schedulePipelineIdleTimeouts();
-      } else if (isVoiceCallActiveRef.current && callStatusRef.current === "active") {
-        setPipelineStatus("listening");
       } else {
         setPipelineStatus("idle");
       }
@@ -1156,7 +1209,7 @@ export function CallTab({
 
       const interruptContext = pendingInterruptContextRef.current;
       pendingInterruptContextRef.current = null;
-      const { transcript, answer, conversationId } = await requestPipelineTurnStream(
+      const { transcript, answer, conversationId, shouldEndSession } = await requestPipelineTurnStream(
         audioBlob,
         turnId,
         signal,
@@ -1167,6 +1220,13 @@ export function CallTab({
             ...messages,
             { id: `user_${Date.now()}`, role: "user", text: liveTranscript },
           ]);
+        },
+        (readyAnswer) => {
+          // 답변 텍스트가 정해지는 즉시 알린다 - TTS 재생이 끝나야 오는
+          // voice_answer(done)와 달리, AI가 말하는 동안에도 trace 패널에
+          // 응답 내용이 바로 보이게 한다.
+          if (!isCurrentPipelineTurn(turnId)) return;
+          onTrace?.({ id: "voice_answer_preview", title: "AI 응답", status: "active", detail: readyAnswer });
         },
       );
       if (!isCurrentPipelineTurn(turnId)) return;
@@ -1187,6 +1247,13 @@ export function CallTab({
         elapsedMs: Math.round(performance.now() - totalStartedAt),
         items: [transcript],
       });
+
+      // requestPipelineTurnStream은 답변 음성 재생까지 끝난 뒤에 반환되므로(내부에서
+      // playbackDone을 기다림), 여기서 바로 끊어도 마지막 인사가 잘리지 않는다.
+      if (shouldEndSession) {
+        if (isCurrentPipelineTurn(turnId)) endCallByAgent();
+        return;
+      }
 
       if (isCurrentPipelineTurn(turnId)) {
         setPipelineStatus("listening");
@@ -1215,7 +1282,7 @@ export function CallTab({
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state !== "recording") return;
 
-    const elapsedMs = performance.now() - recordingStartedAtRef.current;
+    const elapsedMs = performance.now() - speechTurnStartedAtRef.current;
     const stop = () => {
       stopRecordingTimerRef.current = null;
       if (maxRecordingTimerRef.current !== null) window.clearTimeout(maxRecordingTimerRef.current);
@@ -1233,11 +1300,20 @@ export function CallTab({
     }
   };
 
-  const startPipelineRecording = () => {
-    clearPipelineIdleTimers();
-    const stream = mediaStreamRef.current;
-    if (!stream || mediaRecorderRef.current?.state === "recording") return;
-    beginPipelineTurn();
+  // VAD가 "말하기 시작"으로 판정하기까지 최소 2프레임(160ms)이 걸린다. turn마다
+  // 그 시점에 새 MediaRecorder를 만들면 그 전에 이미 말한 첫 단어가 녹음에서
+  // 통째로 빠진다. 그래서 recorder는 통화 대기(listening) 상태일 때부터 이미
+  // 돌고 있고(startListeningRecorder), 평범한 발화 시작은 새로 만들지 않고
+  // 기존 recorder를 그대로 이어 쓴다 — 말하기 시작 전 무음 구간이 녹음 맨
+  // 앞에 같이 들어가 있어 잘릴 일이 없다.
+  //
+  // 단, 바지인(끼어들기)은 다르다 - 그 시점의 recorder에는 AI가 응답하는
+  // 동안 쌓인 무음/배경음이 이미 길게 들어있어, 그대로 이어 쓰면 매 turn
+  // 오디오가 점점 길어지고 STT가 엉뚱하게 인식한다. 그래서 바지인일 때는
+  // 현재 recorder를 멈추고(쌓인 데이터 폐기) onstop에서 새 recorder로 곧장
+  // 발화 turn을 시작한다.
+  const startListeningRecorder = (stream: MediaStream, options: { startSpeechTurnImmediately?: boolean } = {}) => {
+    if (mediaRecorderRef.current?.state === "recording") return;
 
     const preferredMimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((type) =>
       MediaRecorder.isTypeSupported(type),
@@ -1245,14 +1321,18 @@ export function CallTab({
     const nextRecorder = new MediaRecorder(stream, preferredMimeType ? { mimeType: preferredMimeType } : undefined);
     recordedChunksRef.current = [];
     discardRecordingRef.current = false;
-    // startPipelineRecording은 VAD 인터벌 콜백에서만 호출되어 렌더 경로와 무관하다.
+    isSpeechTurnRef.current = false;
+    // startListeningRecorder는 VAD 인터벌 콜백/통화 시작 흐름에서만 호출되어
+    // 렌더 경로와 무관하다.
     // eslint-disable-next-line react-hooks/purity
     recordingStartedAtRef.current = performance.now();
     nextRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) recordedChunksRef.current.push(event.data);
     };
     nextRecorder.onstop = () => {
-      const durationMs = performance.now() - recordingStartedAtRef.current;
+      const wasDiscarded = discardRecordingRef.current;
+      const wasSpeechTurn = isSpeechTurnRef.current;
+      const durationMs = performance.now() - (wasSpeechTurn ? speechTurnStartedAtRef.current : recordingStartedAtRef.current);
       const audioBlob = new Blob(recordedChunksRef.current, {
         type: nextRecorder.mimeType || "audio/webm",
       });
@@ -1260,31 +1340,76 @@ export function CallTab({
       recordedChunksRef.current = [];
       silenceStartedAtRef.current = null;
       speechFramesRef.current = 0;
-      if (discardRecordingRef.current) return;
-      onTrace?.({
-        id: "voice_recording",
-        title: "마이크 녹음",
-        status: audioBlob.size >= MIN_AUDIO_BYTES ? "done" : "warning",
-        detail: `${(durationMs / 1000).toFixed(1)}초 · ${Math.round(audioBlob.size / 1024)}KB · ${audioBlob.type}`,
-        elapsedMs: Math.round(durationMs),
-      });
-      const turnId = pipelineTurnIdRef.current;
-      const signal = activeTurnAbortControllerRef.current?.signal;
-      if (audioBlob.size >= MIN_AUDIO_BYTES && signal) void processRecordedAudio(audioBlob, turnId, signal);
-      else {
-        setError("녹음된 음성이 너무 짧습니다. 마이크 권한을 확인하고 다시 말씀해 주세요.");
-        setPipelineStatus("listening");
-        schedulePipelineIdleTimeouts();
+
+      const shouldStartSpeechTurnNext = !wasDiscarded && options.startSpeechTurnImmediately;
+
+      if (!wasDiscarded && wasSpeechTurn) {
+        onTrace?.({
+          id: "voice_recording",
+          title: "마이크 녹음",
+          status: audioBlob.size >= MIN_AUDIO_BYTES ? "done" : "warning",
+          detail: `${(durationMs / 1000).toFixed(1)}초 · ${Math.round(audioBlob.size / 1024)}KB · ${audioBlob.type}`,
+          elapsedMs: Math.round(durationMs),
+        });
+        const turnId = pipelineTurnIdRef.current;
+        const signal = activeTurnAbortControllerRef.current?.signal;
+        if (audioBlob.size >= MIN_AUDIO_BYTES && signal) {
+          void processRecordedAudio(audioBlob, turnId, signal);
+        } else {
+          setError("녹음된 음성이 너무 짧습니다. 마이크 권한을 확인하고 다시 말씀해 주세요.");
+          setPipelineStatus("listening");
+          schedulePipelineIdleTimeouts();
+        }
+      }
+
+      // 다음 turn을 위해 곧바로 recorder를 재시작한다 - 멈춘 시점이 항상
+      // 침묵 구간(turn 종료 직후)이라 다음 발화 시작이 잘리지 않는다.
+      // 바지인으로 멈춘 경우는 재시작하자마자 바로 발화 turn으로 전환한다.
+      if (isVoiceCallActiveRef.current && callStatusRef.current === "active" && mediaStreamRef.current) {
+        startListeningRecorder(mediaStreamRef.current, { startSpeechTurnImmediately: shouldStartSpeechTurnNext });
+        if (shouldStartSpeechTurnNext) startPipelineRecording();
       }
     };
     mediaRecorderRef.current = nextRecorder;
     nextRecorder.start(250);
+  };
+
+  const startPipelineRecording = (options: { isBargeIn?: boolean } = {}) => {
+    clearPipelineIdleTimers();
+    const stream = mediaStreamRef.current;
+    if (!stream || !mediaRecorderRef.current) return;
+
+    if (options.isBargeIn) {
+      // AI 음성을 끊는 것(interruptPipelineTurn)은 recorder의 멈춤-재시작
+      // 사이클(최대 250ms+)을 기다리지 않고 즉시 실행한다 - 그렇지 않으면
+      // 끼어들기를 감지하고도 응답이 한 박자 늦게 멈춘다. recorder 쪽은
+      // 별도로 정리한다(쌓인 무음/배경음 폐기 후 새로 시작).
+      beginPipelineTurn();
+      isSpeechTurnRef.current = true;
+      speechTurnStartedAtRef.current = performance.now();
+      maxRecordingTimerRef.current = window.setTimeout(stopPipelineRecording, MAX_RECORDING_MS);
+      setPipelineStatus("recording");
+
+      discardRecordingRef.current = true;
+      if (mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.requestData();
+        mediaRecorderRef.current.stop();
+      }
+      return;
+    }
+
+    if (mediaRecorderRef.current.state !== "recording") return;
+    beginPipelineTurn();
+    isSpeechTurnRef.current = true;
+    speechTurnStartedAtRef.current = performance.now();
+
     maxRecordingTimerRef.current = window.setTimeout(stopPipelineRecording, MAX_RECORDING_MS);
     setPipelineStatus("recording");
   };
 
   const startPipelineVad = async (stream: MediaStream) => {
     if (vadIntervalRef.current !== null) window.clearInterval(vadIntervalRef.current);
+    startListeningRecorder(stream);
 
     const AudioContextClass = window.AudioContext;
     const audioContext = new AudioContextClass();
@@ -1314,7 +1439,22 @@ export function CallTab({
       if (currentPipelineStatus === "listening") {
         if (rms >= VAD_START_THRESHOLD) speechFramesRef.current += 1;
         else speechFramesRef.current = 0;
-        if (speechFramesRef.current >= 2) startPipelineRecording();
+        if (speechFramesRef.current >= VAD_START_MIN_FRAMES) {
+          startPipelineRecording();
+          return;
+        }
+
+        // 무음 대기 recorder는 침묵 동안에도 계속 청크를 쌓는다. 사용자가
+        // 한참 후에 말을 시작하면 audioBlob 맨 앞에 긴 무음이 끼어 STT가
+        // 첫 단어를 놓치거나 엉뚱하게 인식한다. 일정 시간 이상 무음이면
+        // recorder를 리프레시해 누적 무음을 짧게 유지한다(앞단어 보존
+        // 효과는 재시작 직후에도 그대로 살아 있다).
+        if (
+          mediaRecorderRef.current?.state === "recording" &&
+          now - recordingStartedAtRef.current >= LISTENING_RECORDER_REFRESH_MS
+        ) {
+          mediaRecorderRef.current.stop();
+        }
         return;
       }
 
@@ -1329,7 +1469,7 @@ export function CallTab({
             previous_assistant_answer: lastAnswerRef.current,
           });
           onTrace?.({ id: "voice_barge_in", title: "사용자 끼어들기", status: "active", detail: "이전 응답을 중단하고 새 발화를 듣습니다." });
-          startPipelineRecording();
+          startPipelineRecording({ isBargeIn: true });
         }
         return;
       }
@@ -1424,7 +1564,7 @@ export function CallTab({
           type: "response.create",
           response: {
             tool_choice: "none",
-            instructions: "통화가 막 연결됐다. \"안녕하세요. 무엇을 도와드릴까요?\" 같은 짧은 인사를 먼저 건네라.",
+            instructions: "통화가 막 연결됐다. \"안녕하세요, Callbee입니다. 무엇을 도와드릴까요?\" 같은 짧은 인사를 먼저 건네라.",
           },
         });
       };
@@ -1461,6 +1601,7 @@ export function CallTab({
           releaseCallResources();
           setVoiceCallActive(false);
           setCallStatus("ended");
+          onTextModeChange?.(false);
           notifyCallEnded();
         }
       };
@@ -1478,6 +1619,7 @@ export function CallTab({
       const message = callError instanceof Error ? callError.message : "통화 연결에 실패했습니다.";
       setError(message);
       setCallStatus("ended");
+      onTextModeChange?.(false);
     }
   };
 
@@ -1503,6 +1645,7 @@ export function CallTab({
     setVoiceCallActive(false);
     setIsTextCallActive(false);
     setCallStatus("ended");
+    onTextModeChange?.(false);
     notifyCallEnded();
   };
 
@@ -1515,7 +1658,6 @@ export function CallTab({
     speaking: "말하는 중입니다...",
   };
   const pipelineStatusLabel = pipelineStatusLabels[pipelineStatus];
-  const isSpeaking = isVoiceCallActive && callStatus === "active" && pipelineStatus === "speaking";
   const voiceStatusLabel = isCallRunning
     ? callStatus === "connecting"
       ? "연결 중입니다..."
@@ -1631,7 +1773,7 @@ export function CallTab({
               if (event.key === "Enter" || event.key === " ") startCall();
             }}
           >
-            <ShaderOrb active={isSpeaking} />
+            <ShaderOrb active={isSpeakingEffectVisible} />
             <span
               aria-hidden="true"
               className="absolute inset-0 opacity-[0.18] mix-blend-soft-light [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.85)_1px,transparent_0)] [background-size:4px_4px]"
@@ -1659,20 +1801,22 @@ export function CallTab({
               </motion.div>
             </AnimatePresence>
           </div>
-          <AnimatePresence initial={false}>
-            {isCallRunning && (
-              <motion.div
-                key="call-duration"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                className="mt-3 font-mono text-[18px] font-extrabold text-gray-700"
-              >
-                {formatCallDuration(callSeconds)}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className="mt-3 flex min-h-[28px] items-center justify-center">
+            <AnimatePresence initial={false}>
+              {isCallRunning && (
+                <motion.div
+                  key="call-duration"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="font-mono text-[18px] font-extrabold text-gray-700"
+                >
+                  {formatCallDuration(callSeconds)}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 

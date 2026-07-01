@@ -3,7 +3,27 @@
     "allow": [
       "Bash(awk 'NR==560,NR==576{print NR\": \"$0}' /Users/yujisan/Projects/frontagent-spc2026/components/home/floating/CallTab.tsx)",
       "Bash(awk 'NR<=575 && /^  const [a-zA-Z]+ = async/{print NR\": \"$0}' /Users/yujisan/Projects/frontagent-spc2026/components/home/floating/CallTab.tsx)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -o /tmp/resp.json -w \"%{http_code}\" \"http://localhost:8000/organization-ai-settings?organization_id=a55c98f9-74ba-40d8-bc9d-bc3f1c0870da\")",
+      "Bash(curl -s -o /tmp/resp_prod.json -w \"%{http_code}\\\\n\" \"https://api.light-code.dev/organization-ai-settings?organization_id=a55c98f9-74ba-40d8-bc9d-bc3f1c0870da\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -o /tmp/patch_resp.json -w '%{http_code}\\\\n' -X PATCH http://localhost:8000/organization-ai-settings?organization_id=a55c98f9-74ba-40d8-bc9d-bc3f1c0870da -H 'Content-Type: application/json' -d '{ *)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__list_migrations",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(curl -s -o /tmp/patch_resp2.json -w '%{http_code}\\\\n' -X PATCH http://localhost:8000/organization-ai-settings?organization_id=a55c98f9-74ba-40d8-bc9d-bc3f1c0870da -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s -o /tmp/patch_resp3.json -w '%{http_code}\\\\n' -X PATCH http://localhost:8000/organization-ai-settings?organization_id=a55c98f9-74ba-40d8-bc9d-bc3f1c0870da -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(.agent/bin/python3 -c ' *)",
+      "WebSearch",
+      "Bash(xargs -I{} basename {})",
+      "Bash(xargs -I{} echo {})"
+    ],
+    "additionalDirectories": [
+      "/Users/yujisan/Projects/agent-test/app/api",
+      "/Users/yujisan/Projects/agent-test/app/repositories",
+      "/Users/yujisan/Projects/agent-test/app/core",
+      "/Users/yujisan/Projects/agent-test/app/services",
+      "/Users/yujisan/Projects/agent-test/app/graph"
     ]
   }
 }

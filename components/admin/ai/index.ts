@@ -8,6 +8,7 @@ export { KnowledgeWorkspace } from "./knowledge/KnowledgeWorkspace";
 export { LogsWorkspace } from "./logs/LogsWorkspace";
 export { RulesSection } from "./rules/RulesSection";
 export { RulesWorkspace } from "./rules/RulesWorkspace";
+export { SettingsWorkspace } from "./settings/SettingsWorkspace";
 export { TasksSection } from "./tasks/TasksSection";
 export { TasksWorkspace } from "./tasks/TasksWorkspace";
 export * from "./types";

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { pageSectionShell } from './sectionLayout'
 
 const mainGridClass =
-  'mb-5 grid min-h-[430px] grid-cols-[380px_1fr] gap-0 overflow-hidden rounded-[20px] !border !border-[rgba(0,0,0,.07)] bg-white !shadow-[0_2px_12px_-2px_rgba(22,25,31,.07),0_0_0_0.5px_rgba(0,0,0,.04)] !transition-shadow !duration-200 max-[860px]:grid-cols-1'
+  'mb-5 grid min-h-[430px] grid-cols-[380px_1fr] gap-0 overflow-hidden rounded-[20px] !border !border-[rgba(0,0,0,.07)] bg-white !shadow-[0_2px_12px_-2px_rgba(22,25,31,.07),0_0_0_0.5px_rgba(0,0,0,.04)] !transition-shadow !duration-200 max-[860px]:min-h-0 max-[860px]:grid-cols-1'
 const agentItemClass =
   'mx-[-8px] flex cursor-pointer items-start gap-3 rounded-[10px] border-t border-[var(--gray-border)] px-2 py-3.5 transition-colors duration-[120ms] hover:bg-[#f5f8ff] [&:first-child]:border-t-0 [&:first-child]:pt-0'
 const agentIconClass = 'flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl text-base'
@@ -214,14 +214,16 @@ export default function Features() {
           </div>
 
           {/* Right: Q&A UI panel — activeAgent에 따라 전환 */}
-          <div className="relative overflow-hidden p-0">
+          <div className="relative min-h-[430px] overflow-hidden p-0 max-[860px]:min-h-0">
             {agents.map((agent) => (
               <div
                 key={agent.id}
                 className={[
-                  'absolute inset-0 transition-opacity duration-300',
+                  'absolute inset-0 transition-opacity duration-300 max-[860px]:relative max-[860px]:inset-auto',
                   agent.bg,
-                  agent.id === activeId ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+                  agent.id === activeId
+                    ? 'opacity-100 pointer-events-auto'
+                    : 'opacity-0 pointer-events-none max-[860px]:hidden',
                 ].join(' ')}
               >
                 <agent.Panel />

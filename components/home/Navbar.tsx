@@ -51,7 +51,7 @@ export function Navbar() {
         isScrolled || isMobileMenuOpen ? "bg-white/90 backdrop-blur-md shadow-[0_2px_20px_rgb(0,0,0,0.04)]" : "bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex justify-between items-center h-[72px]">
           <div className="flex items-center">
             <span className="font-bold text-[22px] tracking-tight text-gray-900">Front Agent</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef } from "react";
 
 let sharedShaderStartedAt: number | null = null;
@@ -169,38 +170,44 @@ export function ShaderOrb({ active }: { active: boolean }) {
         className="absolute inset-0 h-full w-full rounded-full [clip-path:circle(50%)]"
         aria-hidden="true"
       />
-      {active && (
-        <div
-          className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%)]"
-          aria-hidden="true"
-        >
-          <div className="flex h-12 items-center gap-1.5 rounded-full bg-white/10 px-4 backdrop-blur-[1px]">
-            {[18, 30, 22, 38, 26, 34, 20].map((height, index) => (
-              <span
-                key={index}
-                className="w-1.5 rounded-full bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.45)]"
-                style={{
-                  height,
-                  animation: "shader-orb-voice-wave 780ms ease-in-out infinite",
-                  animationDelay: `${index * 80}ms`,
-                }}
-              />
-            ))}
-          </div>
-          <style>{`
-            @keyframes shader-orb-voice-wave {
-              0%, 100% {
-                transform: scaleY(0.45);
-                opacity: 0.55;
+      <AnimatePresence initial={false}>
+        {active && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, filter: "blur(6px)" }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, scale: 0.92, filter: "blur(6px)" }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%)]"
+            aria-hidden="true"
+          >
+            <div className="flex h-12 items-center gap-1.5 rounded-full bg-white/10 px-4 backdrop-blur-[1px]">
+              {[18, 30, 22, 38, 26, 34, 20].map((height, index) => (
+                <span
+                  key={index}
+                  className="w-1.5 rounded-full bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.45)]"
+                  style={{
+                    height,
+                    animation: "shader-orb-voice-wave 780ms ease-in-out infinite",
+                    animationDelay: `${index * 80}ms`,
+                  }}
+                />
+              ))}
+            </div>
+            <style>{`
+              @keyframes shader-orb-voice-wave {
+                0%, 100% {
+                  transform: scaleY(0.45);
+                  opacity: 0.55;
+                }
+                50% {
+                  transform: scaleY(1);
+                  opacity: 1;
+                }
               }
-              50% {
-                transform: scaleY(1);
-                opacity: 1;
-              }
-            }
-          `}</style>
-        </div>
-      )}
+            `}</style>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

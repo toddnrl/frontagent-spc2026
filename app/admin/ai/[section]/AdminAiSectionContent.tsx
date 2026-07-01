@@ -1,6 +1,12 @@
 "use client";
 
-import { KnowledgeWorkspace, LogsWorkspace, RulesWorkspace, TasksWorkspace } from "../../../../components/admin/ai";
+import {
+  KnowledgeWorkspace,
+  LogsWorkspace,
+  RulesWorkspace,
+  SettingsWorkspace,
+  TasksWorkspace,
+} from "../../../../components/admin/ai";
 import type { AiCosSection } from "../../../../components/admin/ai/types";
 import { useAdminSessionContext } from "../../../../components/admin/AdminSessionContext";
 import { getOrganizationId } from "../../../../lib/organization";
@@ -26,6 +32,10 @@ export function AdminAiSectionContent({ section, label }: { section: AiCosSectio
 
   if (section === "tasks") {
     return <TasksWorkspace organizationId={organizationId} user={session.user} />;
+  }
+
+  if (section === "settings") {
+    return <SettingsWorkspace organizationId={organizationId} />;
   }
 
   return (
