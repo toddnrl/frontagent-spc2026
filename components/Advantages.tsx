@@ -1,3 +1,5 @@
+'use client'
+
 import { pageSectionShell } from './sectionLayout'
 
 const ITEMS = [
@@ -37,7 +39,7 @@ const ITEMS = [
     desc: '단순 상담을 넘어 주문 취소나 예약 변경 등 실제 업무를 AI가 직접 수행하여 문제 해결 속도를 높입니다.',
   },
   {
-    key: 'improve',
+    key: 'evaluation',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 2.1l4 4-4 4" />
@@ -68,9 +70,14 @@ export default function Advantages() {
       </p>
       <div className="mx-auto grid w-full max-w-[1200px] grid-cols-4 gap-[clamp(16px,2vw,28px)] text-left max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1 max-[640px]:gap-[14px]">
         {ITEMS.map(item => (
-          <div
+          <a
             key={item.key}
-            className="flex min-w-0 flex-col gap-2.5 rounded-2xl border border-[rgba(0,0,0,0.1)] p-[clamp(18px,2vw,24px)]"
+            href={`#${item.key}`}
+            onClick={e => {
+              e.preventDefault()
+              document.getElementById(item.key)?.scrollIntoView({ behavior: 'smooth' })
+            }}
+            className="group flex min-w-0 cursor-pointer flex-col gap-2.5 rounded-2xl border border-[rgba(0,0,0,0.1)] p-[clamp(18px,2vw,24px)] transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(0,0,0,0.18)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
           >
             <div className="mb-0.5 flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border border-[rgba(0,0,0,0.1)] bg-white text-[var(--ink)]">
               {item.icon}
@@ -79,7 +86,7 @@ export default function Advantages() {
               {item.title} <span className="text-lg font-normal text-[var(--ink)]">›</span>
             </div>
             <div className="text-[13.5px] leading-[1.65] text-[var(--muted)]">{item.desc}</div>
-          </div>
+          </a>
         ))}
       </div>
     </div>

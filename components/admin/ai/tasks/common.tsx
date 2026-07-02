@@ -1,5 +1,3 @@
-"use client";
-
 import { ChevronDown, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "../../ui";

@@ -22,7 +22,7 @@ import {
   Users,
   Volume2,
 } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { getOrganizationId } from "../../../lib/organization";
 import { conversations } from "../data";
 import type {
@@ -50,6 +50,7 @@ import {
   TimelineItem,
 } from "../ui/DashboardUI";
 import { Avatar } from "../ui/Avatar";
+import { ActivityDivider, AgentMessage } from "../ui/ChatBubbles";
 import { Button, Modal, ModalActions, Toggle } from "../ui";
 import { TabRow } from "../ui/TabRow";
 import {
@@ -83,8 +84,8 @@ import {
   updateServiceItemOption,
 } from "./reservationsApi";
 import type { ServiceInput, ServiceItemInput, ServiceItemOptionInput } from "./reservationsApi";
-import { fetchConversationMessages, fetchConversations } from "./conversationsApi";
-import type { Conversation } from "../types";
+import { fetchConversationMessages, fetchConversations, parseUtcTimestamp } from "./conversationsApi";
+import type { Conversation, ConversationMessage } from "../types";
 
 const CALLS_POLL_INTERVAL_MS = 5000;
 
@@ -93,6 +94,18 @@ function formatCallDurationLabel(seconds?: number | null) {
   const minutes = Math.floor(seconds / 60);
   const remaining = seconds % 60;
   return `${minutes}:${String(remaining).padStart(2, "0")}`;
+}
+
+function formatCallMessageTime(value?: string | null) {
+  if (!value) return "";
+  return parseUtcTimestamp(value).toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatConversationText(text: string) {
+  return text.replace(/\bfront agent\b/gi, "Callbee").replace(/\balf voice\b/gi, "Callbee");
 }
 
 function callToAiCall(call: Conversation): AiCall {
@@ -112,7 +125,7 @@ function callToAiCall(call: Conversation): AiCall {
     status,
     intent: "",
     sentiment: "normal",
-    aiAgent: "Front Agent",
+    aiAgent: "Callbee",
     owner: call.assignee,
     duration: formatCallDurationLabel(call.callDurationSeconds),
     transcript: [],
@@ -131,7 +144,7 @@ const aiCalls: AiCall[] = [
     status: "handoff-ready",
     intent: "환불 지연 불만",
     sentiment: "critical",
-    aiAgent: "ALF Voice",
+    aiAgent: "Callbee",
     owner: "이지현",
     duration: "04:18",
     transcript: [
@@ -152,7 +165,7 @@ const aiCalls: AiCall[] = [
     status: "ai-answering",
     intent: "예약 변경",
     sentiment: "normal",
-    aiAgent: "ALF Voice",
+    aiAgent: "Callbee",
     owner: "AI 처리중",
     duration: "01:42",
     transcript: [
@@ -172,7 +185,7 @@ const aiCalls: AiCall[] = [
     status: "callback",
     intent: "배송 조회",
     sentiment: "warning",
-    aiAgent: "ALF Voice",
+    aiAgent: "Callbee",
     owner: "김수현",
     duration: "00:36",
     transcript: [
@@ -227,6 +240,11 @@ export function CustomerOperationsWorkspace({
 }) {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
+  const [selectedDateSlots, setSelectedDateSlots] = useState<AvailableSlot[]>([]);
+  const [selectedDateReservations, setSelectedDateReservations] = useState<Reservation[]>([]);
+  const [isCalendarLoading, setIsCalendarLoading] = useState(true);
+  const [jumpToReservationId, setJumpToReservationId] = useState<string | null>(null);
 
   return (
     <>
@@ -236,6 +254,14 @@ export function CustomerOperationsWorkspace({
           user={user}
           selectedReservation={selectedReservation}
           onSelectReservation={setSelectedReservation}
+          onLoadingChange={setIsCalendarLoading}
+          jumpToReservationId={jumpToReservationId}
+          onJumpHandled={() => setJumpToReservationId(null)}
+          onCalendarDateSelect={(date, slots, reservationsForDate) => {
+            setSelectedCalendarDate(date);
+            setSelectedDateSlots(slots);
+            setSelectedDateReservations(reservationsForDate);
+          }}
         />
       )}
       {activeSection === "campaigns" && (
@@ -248,7 +274,17 @@ export function CustomerOperationsWorkspace({
       {activeSection === "outbound" && <OutboundMain />}
       {activeSection === "calls" && <CallsMain user={user} />}
       {activeSection === "appointments" ? (
-        <ReservationDetailPanel reservation={selectedReservation} />
+        <ReservationDetailPanel
+          reservation={selectedReservation}
+          selectedDate={selectedCalendarDate}
+          selectedDateSlots={selectedDateSlots}
+          selectedDateReservations={selectedDateReservations}
+          isLoading={isCalendarLoading}
+          onSelectReservation={(r) => {
+            setSelectedReservation(r);
+            setJumpToReservationId(r.id);
+          }}
+        />
       ) : activeSection === "campaigns" ? (
         <ServiceDetailPanel service={selectedService} />
       ) : (
@@ -391,20 +427,38 @@ function AppointmentsMain({
   user,
   selectedReservation,
   onSelectReservation,
+  onCalendarDateSelect,
+  onLoadingChange,
+  jumpToReservationId,
+  onJumpHandled,
 }: {
   user: User;
   selectedReservation: Reservation | null;
   onSelectReservation: (reservation: Reservation | null) => void;
+  onCalendarDateSelect: (date: Date, slots: AvailableSlot[], reservations: Reservation[]) => void;
+  onLoadingChange: (loading: boolean) => void;
+  jumpToReservationId: string | null;
+  onJumpHandled: () => void;
 }) {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [bookingSetting, setBookingSetting] = useState<BookingSetting | null>(null);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointmentView, setAppointmentView] = useState<AppointmentView>("calendar");
   const [reservationFilter, setReservationFilter] = useState<ReservationFilter>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const organizationId = getOrganizationId(user);
+  useEffect(() => { onLoadingChange(isLoading); }, [isLoading, onLoadingChange]);
+  useEffect(() => {
+    if (!jumpToReservationId || isLoading) return;
+    const target = reservations.find((r) => r.id === jumpToReservationId);
+    if (!target) return;
+    setAppointmentView("reservations");
+    onSelectReservation(target);
+    onJumpHandled();
+  }, [jumpToReservationId, reservations, isLoading, onSelectReservation, onJumpHandled]);
   useEffect(() => {
     let isMounted = true;
     const today = formatDateForApi(new Date());
@@ -610,6 +664,8 @@ function AppointmentsMain({
             availableSlots={availableSlots}
             reservations={reservations}
             services={services}
+            onDateSelect={onCalendarDateSelect}
+            isLoading={isLoading}
           />
         ) : selectedReservation ? (
           <ReservationProfileDetail
@@ -635,19 +691,58 @@ function AppointmentsMain({
   );
 }
 
+function CalendarSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="mb-5 rounded-[20px] bg-[#f7f7f7] p-5">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-gray-200" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-32 rounded-lg bg-gray-200" />
+            <div className="h-3 w-24 rounded-lg bg-gray-200" />
+          </div>
+        </div>
+        <div className="h-3 w-3/4 rounded-lg bg-gray-200" />
+      </div>
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 rounded-[16px] bg-[#f7f7f7]" />
+        ))}
+      </div>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="h-4 w-4 rounded-full bg-gray-200" />
+        <div className="h-5 w-24 rounded-lg bg-gray-200" />
+        <div className="h-4 w-4 rounded-full bg-gray-200" />
+      </div>
+      <div className="grid grid-cols-7 gap-1 rounded-[20px] bg-[#f7f7f7] p-2">
+        {Array.from({ length: 35 }).map((_, i) => (
+          <div key={i} className="h-[86px] rounded-[14px] bg-gray-200/60" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CalendarMainContent({
   bookingSetting,
   availableSlots,
   reservations,
   services,
+  onDateSelect,
+  isLoading,
 }: {
   bookingSetting: BookingSetting | null;
   availableSlots: AvailableSlot[];
   reservations: Reservation[];
   services: Service[];
+  onDateSelect: (date: Date, slots: AvailableSlot[], reservations: Reservation[]) => void;
+  isLoading: boolean;
 }) {
+  if (isLoading) return <CalendarSkeleton />;
+
   const today = new Date();
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedDate, setSelectedDate] = useState<Date>(today);
   const year = visibleMonth.getFullYear();
   const month = visibleMonth.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -756,6 +851,7 @@ function CalendarMainContent({
             const daySlots = slotsByDate.get(dateKey) ?? [];
             const dayReservations = reservationsByDate.get(dateKey) ?? [];
             const isToday = dateKey === formatDateForApi(today);
+            const isSelected = dateKey === formatDateForApi(selectedDate);
             const dayIndex = date.getDay();
             const dateTextColor = isToday
               ? "text-blue-600"
@@ -768,8 +864,16 @@ function CalendarMainContent({
             return (
               <div
                 key={dateKey}
-                className={`min-h-[86px] rounded-[14px] p-2 ${
-                  isToday ? "bg-blue-50 ring-1 ring-blue-200" : "bg-white"
+                onClick={() => {
+                  setSelectedDate(date);
+                  onDateSelect(date, slotsByDate.get(dateKey) ?? [], reservationsByDate.get(dateKey) ?? []);
+                }}
+                className={`min-h-[86px] cursor-pointer rounded-[14px] p-2 transition-colors ${
+                  isSelected
+                    ? "bg-blue-100 ring-2 ring-blue-400"
+                    : isToday
+                      ? "bg-blue-50 ring-1 ring-blue-200"
+                      : "bg-white hover:bg-gray-50"
                 }`}
               >
                 <div className={`mb-2 text-[13px] font-extrabold ${dateTextColor}`}>
@@ -804,43 +908,60 @@ function CalendarMainContent({
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div>
-          <SectionHeading icon={<ClockIcon />} title="오늘 가능 시간" />
-          <div className="grid gap-2">
-            {availableSlots.slice(0, 5).map((slot) => (
-              <div key={`${slot.startAt}-${slot.endAt}`} className="flex items-center justify-between rounded-[14px] bg-[#f7f7f7] px-4 py-3">
-                <span className="text-[13px] font-bold text-gray-700">{formatSlotTime(slot)}</span>
-                <span className="rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-extrabold text-green-600">가능</span>
-              </div>
-            ))}
-            {availableSlots.length === 0 && (
-              <div className="rounded-[14px] bg-[#f7f7f7] px-4 py-3 text-[13px] font-semibold text-gray-400">
-                오늘 표시할 가능 시간이 없습니다.
-              </div>
-            )}
-          </div>
-        </div>
-        <div>
-          <SectionHeading icon={<CalendarClock className="h-5 w-5 text-blue-500" />} title="최근 예약" />
-          <div className="grid gap-2">
-            {reservations.slice(0, 5).map((reservation) => (
-              <div key={reservation.id} className="rounded-[14px] bg-[#f7f7f7] px-4 py-3">
-                <div className="text-[13px] font-bold text-gray-800">
-                  {reservation.customerName ?? "고객 미입력"} ·{" "}
-                  {reservation.serviceId ? serviceNameById.get(reservation.serviceId) ?? "예약" : "예약"}
+      {(() => {
+        const selectedKey = formatDateForApi(selectedDate);
+        const selectedSlots = slotsByDate.get(selectedKey) ?? [];
+        const selectedReservations = reservationsByDate.get(selectedKey) ?? [];
+        const selectedLabel = selectedDate.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+
+        return (
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-[15px] font-extrabold text-gray-900">{selectedLabel}</span>
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-extrabold text-blue-600">
+                가능 {selectedSlots.length}개 · 예약 {selectedReservations.length}건
+              </span>
+            </div>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div>
+                <SectionHeading icon={<ClockIcon />} title="가능 시간" />
+                <div className="grid gap-2">
+                  {selectedSlots.map((slot) => (
+                    <div key={`${slot.startAt}-${slot.endAt}`} className="flex items-center justify-between rounded-[14px] bg-[#f7f7f7] px-4 py-3">
+                      <span className="text-[13px] font-bold text-gray-700">{formatSlotTime(slot)}</span>
+                      <span className="rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-extrabold text-green-600">가능</span>
+                    </div>
+                  ))}
+                  {selectedSlots.length === 0 && (
+                    <div className="rounded-[14px] bg-[#f7f7f7] px-4 py-3 text-[13px] font-semibold text-gray-400">
+                      이 날 가능한 시간이 없습니다.
+                    </div>
+                  )}
                 </div>
-                <div className="mt-1 text-[12px] font-semibold text-gray-400">{formatReservationTime(reservation)}</div>
               </div>
-            ))}
-            {reservations.length === 0 && (
-              <div className="rounded-[14px] bg-[#f7f7f7] px-4 py-3 text-[13px] font-semibold text-gray-400">
-                표시할 예약이 없습니다.
+              <div>
+                <SectionHeading icon={<CalendarClock className="h-5 w-5 text-blue-500" />} title="예약" />
+                <div className="grid gap-2">
+                  {selectedReservations.map((reservation) => (
+                    <div key={reservation.id} className="rounded-[14px] bg-[#f7f7f7] px-4 py-3">
+                      <div className="text-[13px] font-bold text-gray-800">
+                        {reservation.customerName ?? "고객 미입력"} ·{" "}
+                        {reservation.serviceId ? serviceNameById.get(reservation.serviceId) ?? "예약" : "예약"}
+                      </div>
+                      <div className="mt-1 text-[12px] font-semibold text-gray-400">{formatReservationTime(reservation)}</div>
+                    </div>
+                  ))}
+                  {selectedReservations.length === 0 && (
+                    <div className="rounded-[14px] bg-[#f7f7f7] px-4 py-3 text-[13px] font-semibold text-gray-400">
+                      이 날 예약이 없습니다.
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
     </div>
   );
 }
@@ -975,26 +1096,81 @@ function ReservationProfileDetail({
   );
 }
 
-function ReservationDetailPanel({ reservation }: { reservation: Reservation | null }) {
+function ReservationDetailPanel({
+  reservation,
+  selectedDate,
+  selectedDateSlots,
+  selectedDateReservations,
+  isLoading,
+  onSelectReservation,
+}: {
+  reservation: Reservation | null;
+  selectedDate: Date;
+  selectedDateSlots: AvailableSlot[];
+  selectedDateReservations: Reservation[];
+  isLoading: boolean;
+  onSelectReservation?: (reservation: Reservation) => void;
+}) {
+  const dateLabel = selectedDate.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+
+  if (isLoading) {
+    return (
+      <DetailSidebar>
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 w-24 rounded-lg bg-gray-200" />
+          <div className="h-3 w-40 rounded-lg bg-gray-200" />
+          <div className="mt-4 space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 rounded-[12px] bg-gray-100" />
+            ))}
+          </div>
+          <div className="mt-4 space-y-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-10 rounded-[12px] bg-gray-100" />
+            ))}
+          </div>
+        </div>
+      </DetailSidebar>
+    );
+  }
+
   return (
     <DetailSidebar>
       <DetailIntro
-        icon={<ShieldCheck className="h-5 w-5 text-blue-500" />}
+        icon={<CalendarClock className="h-5 w-5 text-blue-500" />}
         title="일정 상세"
-        description="선택한 예약과 연결된 캘린더, 일정 처리 기준, 최근 변경 이력을 오른쪽에서 고정 확인합니다."
+        description={`${dateLabel} 일정입니다.`}
       />
-      <DetailSection title="운영 정책">
-        <DetailRow label="SLA" value="5분 이내" />
-        <DetailRow label="승인 기준" value="고위험 자동 보류" />
-        <DetailRow label="일정 기준" value="예약 캘린더" />
+
+      <DetailSection title={`예약 현황`}>
+        {selectedDateReservations.length === 0 ? (
+          <div className="text-[13px] font-semibold text-gray-400">예약이 없습니다.</div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {selectedDateReservations.map((r) => (
+              <div
+                key={r.id}
+                onClick={() => onSelectReservation?.(r)}
+                className={`rounded-[12px] px-3 py-2.5 text-[12px] transition-colors ${onSelectReservation ? "cursor-pointer bg-[#f7f7f7] hover:bg-blue-50 hover:ring-1 hover:ring-blue-200" : "bg-[#f7f7f7]"}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-bold text-gray-800">{r.customerName ?? "고객 미입력"}</div>
+                  <StatusPill tone={reservationStatusMeta[r.status].tone}>
+                    {reservationStatusMeta[r.status].label}
+                  </StatusPill>
+                </div>
+                <div className="mt-1 font-semibold text-gray-400">{formatReservationTime(r)}</div>
+                {onSelectReservation && (
+                  <div className="mt-1.5 text-[11px] font-bold text-blue-400">탭하여 상세 보기 →</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </DetailSection>
-      <DetailSection title="체크리스트">
-        <ChecklistItem text="고객 동의와 민감 정보 마스킹 확인" />
-        <ChecklistItem text="AI 추천 액션은 담당자 승인 후 실행" />
-        <ChecklistItem text="완료 후 이벤트와 태그를 상담 로그에 남김" />
-      </DetailSection>
+
       {reservation && (
-        <DetailSection title="선택된 예약">
+        <DetailSection title="선택된 예약 상세">
           <DetailRow label="예약 ID" value={reservation.id.slice(0, 8)} />
           <DetailRow label="상태" value={reservationStatusMeta[reservation.status].label} />
           <DetailRow
@@ -1003,6 +1179,20 @@ function ReservationDetailPanel({ reservation }: { reservation: Reservation | nu
           />
         </DetailSection>
       )}
+
+      <DetailSection title={`가능 시간`}>
+        {selectedDateSlots.length === 0 ? (
+          <div className="text-[13px] font-semibold text-gray-400">가능한 시간이 없습니다.</div>
+        ) : (
+          selectedDateSlots.map((slot) => (
+            <DetailRow
+              key={`${slot.startAt}-${slot.endAt}`}
+              label={formatSlotTime(slot)}
+              value="가능"
+            />
+          ))
+        )}
+      </DetailSection>
     </DetailSidebar>
   );
 }
@@ -2679,7 +2869,7 @@ function CallsMain({ user }: { user: User }) {
   const organizationId = getOrganizationId(user);
   const [calls, setCalls] = useState<AiCall[]>([]);
   const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
-  const [transcript, setTranscript] = useState<string[]>([]);
+  const [callMessages, setCallMessages] = useState<ConversationMessage[]>([]);
   const [statusFilter, setStatusFilter] = useState<"전체" | "진행중" | "종료">("전체");
 
   useEffect(() => {
@@ -2714,24 +2904,27 @@ function CallsMain({ user }: { user: User }) {
     if (!activeCallId) return;
 
     let isMounted = true;
+    const isLive = activeCall?.status === "ai-answering";
 
-    fetchConversationMessages(organizationId, activeCallId)
-      .then((messages) => {
-        if (!isMounted) return;
-        setTranscript(
-          messages.map(
-            (message) => `${message.senderType === "customer" ? "고객" : "AI"}: ${message.message}`,
-          ),
-        );
-      })
-      .catch(() => {
-        if (isMounted) setTranscript([]);
-      });
+    function loadMessages() {
+      fetchConversationMessages(organizationId, activeCallId!)
+        .then((msgs) => {
+          if (!isMounted) return;
+          setCallMessages(msgs);
+        })
+        .catch(() => {
+          if (isMounted) setCallMessages([]);
+        });
+    }
+
+    loadMessages();
+    const intervalId = isLive ? window.setInterval(loadMessages, 2000) : null;
 
     return () => {
       isMounted = false;
+      if (intervalId) window.clearInterval(intervalId);
     };
-  }, [organizationId, activeCallId]);
+  }, [organizationId, activeCallId, activeCall?.status]);
 
   const activeCallCount = calls.filter((call) => call.status === "ai-answering").length;
   const endedCallCount = calls.filter((call) => call.status === "callback").length;
@@ -2740,61 +2933,73 @@ function CallsMain({ user }: { user: User }) {
     if (statusFilter === "종료") return call.status === "callback";
     return true;
   });
-  const activeTranscript = activeCall ? transcript : [];
+  const activeTranscript = activeCall ? callMessages : [];
 
   return (
     <>
-      <section className="grid min-h-0 min-w-0 overflow-hidden rounded-[20px] bg-[#fafafa] grid-cols-[230px_minmax(0,1fr)]">
-        <CallInboxSidebar
-          totalCount={calls.length}
-          activeCount={activeCallCount}
-          endedCount={endedCallCount}
-          activeFilter={statusFilter}
-          onFilterSelect={setStatusFilter}
-        />
-        <div className="flex min-h-0 min-w-0 flex-col px-4 py-7">
-          <OperationsListHeader
-            title="AI 통화중"
-            subtitle={`${visibleCalls.length}개`}
-            listTitle="통화방"
-            tabs={["전체", "진행중", "종료"]}
-            activeTab={statusFilter}
-            onTabSelect={(tab) => setStatusFilter(tab as "전체" | "진행중" | "종료")}
-          />
-          <div className="mb-4 grid grid-cols-2 gap-2">
-            <CallMetric label="AI 통화중" value={String(activeCallCount)} tone="blue" />
-            <CallMetric label="종료된 통화" value={String(endedCallCount)} tone="green" />
-          </div>
-          {visibleCalls.length === 0 ? (
-            <div className="rounded-[16px] bg-white p-4 text-[14px] font-semibold text-gray-400">
-              아직 통화 기록이 없습니다.
+      <section className="col-span-2 grid h-full min-h-0 min-w-0 overflow-hidden rounded-[20px] bg-[#fafafa]" style={{ gridTemplateColumns: "260px minmax(0,1fr)" }}>
+        {/* 왼쪽: 필터 + 통화 목록 한 컬럼 */}
+        <div className="flex h-full min-h-0 flex-col overflow-hidden border-r border-gray-200/80">
+          <div className="shrink-0 px-5 py-6">
+            <h2 className="mb-5 text-[22px] font-bold">전화</h2>
+            <div className="-mx-5 grid gap-0.5">
+              {(["전체", "진행중", "종료"] as const).map((filter) => {
+                const count = filter === "전체" ? calls.length : filter === "진행중" ? activeCallCount : endedCallCount;
+                const icon = filter === "진행중" ? <Volume2 className="h-4 w-4" /> : filter === "종료" ? <Headphones className="h-4 w-4" /> : <Phone className="h-4 w-4" />;
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => setStatusFilter(filter)}
+                    className={`flex w-full items-center justify-between px-5 py-2.5 text-left text-[14px] font-bold transition-colors ${
+                      statusFilter === filter ? "bg-[#e8e8e8] text-gray-950" : "text-gray-500 hover:bg-white/60"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">{icon}{filter}</span>
+                    <span className="text-[13px] text-gray-400">{count}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
+
+          <div className="mx-5 border-t border-gray-200/80" />
+
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+            <div className="mb-2 px-2 text-[11px] font-bold text-gray-400">통화 목록</div>
+            {visibleCalls.length === 0 ? (
+              <div className="rounded-[14px] bg-white px-4 py-4 text-[13px] font-semibold text-gray-400">
+                통화 기록이 없습니다.
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {visibleCalls.map((call) => (
+                  <button
+                    key={call.id}
+                    onClick={() => setSelectedCallId(call.id)}
+                    className={`w-full rounded-[14px] p-3 text-left transition-colors ${
+                      call.id === activeCall?.id ? "bg-[#e9e9e9]" : "hover:bg-white"
+                    }`}
+                  >
+                    <AiCallListItem call={call} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 오른쪽: 통화 상세 */}
+        <div className="h-full min-h-0 min-w-0 overflow-hidden">
+          {activeCall ? (
+            <ActiveCallPanel call={activeCall} messages={activeTranscript} />
           ) : (
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-              {visibleCalls.map((call) => (
-                <button
-                  key={call.id}
-                  onClick={() => setSelectedCallId(call.id)}
-                  className={`w-full rounded-[16px] p-3 text-left transition-colors ${
-                    call.id === activeCall?.id ? "bg-[#e9e9e9]" : "hover:bg-white"
-                  }`}
-                >
-                  <AiCallListItem call={call} />
-                </button>
-              ))}
+            <div className="flex h-full items-center justify-center text-[14px] font-semibold text-gray-400">
+              통화를 선택하면 상세 내용이 표시됩니다.
             </div>
           )}
         </div>
       </section>
-      <section className="h-full min-h-0 min-w-0 overflow-hidden rounded-[20px] bg-white">
-        {activeCall ? (
-          <ActiveCallPanel call={activeCall} transcript={activeTranscript} />
-        ) : (
-          <div className="flex h-full items-center justify-center text-[14px] font-semibold text-gray-400">
-            통화를 선택하면 상세 내용이 표시됩니다.
-          </div>
-        )}
-      </section>
+
     </>
   );
 }
@@ -3233,10 +3438,28 @@ function AiCallListItem({ call }: { call: AiCall }) {
   );
 }
 
-function ActiveCallPanel({ call, transcript }: { call: AiCall; transcript: string[] }) {
-  const [activeTab, setActiveTab] = useState<"conversation" | "logs">(
-    "conversation",
-  );
+function ActiveCallPanel({ call, messages = [] }: { call: AiCall; messages?: ConversationMessage[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fallbackMessages: ConversationMessage[] = Array.isArray(call.transcript)
+    ? call.transcript.map((line, index) => {
+        const isCustomer = line.startsWith("고객:");
+        return {
+          id: `fallback-${index}`,
+          conversationId: call.id,
+          senderType: isCustomer ? "customer" : "ai",
+          senderName: isCustomer ? null : "Callbee",
+          message: formatConversationText(line.replace(/^(고객|AI):\s*/, "")),
+        } satisfies ConversationMessage;
+      })
+    : [];
+  const conversationMessages = messages.length > 0 ? messages : fallbackMessages;
+  const lastMessageId = conversationMessages.at(-1)?.id;
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [conversationMessages.length, lastMessageId]);
 
   return (
     <main className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-white">
@@ -3260,60 +3483,39 @@ function ActiveCallPanel({ call, transcript }: { call: AiCall; transcript: strin
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-5">
-        <div className="mb-5 grid w-full max-w-[360px] grid-cols-2 rounded-full bg-[#f4f4f4] p-1 text-[13px] font-bold">
-          <button
-            onClick={() => setActiveTab("conversation")}
-            className={`rounded-full px-3 py-2 ${
-              activeTab === "conversation"
-                ? "bg-white text-gray-950 shadow-sm"
-                : "text-gray-400"
-            }`}
-          >
-            실시간 대화
-          </button>
-          <button
-            onClick={() => setActiveTab("logs")}
-            className={`rounded-full px-3 py-2 ${
-              activeTab === "logs"
-                ? "bg-white text-gray-950 shadow-sm"
-                : "text-gray-400"
-            }`}
-          >
-            로그
-          </button>
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="space-y-4">
+            {conversationMessages.map((message) => {
+              const isCustomer = message.senderType === "customer";
+              const messageTime = formatCallMessageTime(message.createdAt);
+              if (message.senderType === "system") {
+                return <ActivityDivider key={message.id} label={formatConversationText(message.message)} />;
+              }
+              return (
+                <div key={message.id}>
+                  {isCustomer ? (
+                    <div className="mb-3 ml-auto flex max-w-[58%] flex-col items-end">
+                      <div className="rounded-[18px] rounded-tr-[8px] bg-[#ececec] px-5 py-3 text-sm font-semibold leading-relaxed text-gray-900">
+                        {formatConversationText(message.message)}
+                      </div>
+                      {messageTime && (
+                        <div className="mt-1 px-1 text-[11px] font-semibold text-gray-400">
+                          {messageTime}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                      <AgentMessage
+                        name={message.senderName ?? (message.senderType === "admin" ? "관리자" : "Callbee")}
+                        time={messageTime}
+                        text={formatConversationText(message.message)}
+                      />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-
-        {activeTab === "conversation" ? (
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <div className="mb-7 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-[13px] font-bold text-blue-700">
-              <Mic className="h-4 w-4" />
-              실시간 대화 수신중
-            </div>
-            <div className="space-y-4">
-              {transcript.map((line) => {
-                const isCustomer = line.startsWith("고객:");
-                return (
-                  <div
-                    key={line}
-                    className={`max-w-[72%] rounded-[18px] px-5 py-3 text-[15px] font-semibold leading-relaxed ${
-                      isCustomer
-                        ? "ml-auto rounded-tr-[8px] bg-[#eeeeee] text-gray-800"
-                        : "rounded-tl-[8px] bg-blue-50 text-blue-800"
-                    }`}
-                  >
-                    {line}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <div className="rounded-[16px] bg-[#f7f7f7] px-4 py-3 text-[13px] font-semibold text-gray-400">
-              아직 단계별 실행 로그를 기록하는 기능이 없습니다.
-            </div>
-          </div>
-        )}
       </div>
 
       {call.canTakeOver && (
@@ -3434,4 +3636,3 @@ function CallOperationsDetailPanel({ call }: { call: AiCall }) {
     </DetailSidebar>
   );
 }
-

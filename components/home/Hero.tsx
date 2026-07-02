@@ -55,7 +55,7 @@ export function Hero() {
                       <MessageSquare className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-bold text-[15px] sm:text-[16px] text-gray-900 leading-tight">Front Agent</div>
+                      <div className="font-bold text-[15px] sm:text-[16px] text-gray-900 leading-tight">Callbee</div>
                       <div className="text-[12px] sm:text-[13px] font-medium text-gray-500 mt-0.5">상담 처리 화면</div>
                     </div>
                   </div>

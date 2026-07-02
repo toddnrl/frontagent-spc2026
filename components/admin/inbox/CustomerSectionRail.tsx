@@ -8,11 +8,11 @@ const customerItems: Array<{
   icon: typeof Inbox;
 }> = [
   { section: "conversations", label: "상담 수신함", icon: Inbox },
+  { section: "calls", label: "전화", icon: Phone },
   { section: "customers", label: "고객", icon: Users },
   { section: "appointments", label: "예약", icon: CalendarClock },
   { section: "campaigns", label: "서비스", icon: Tag },
   { section: "outbound", label: "알림 발송", icon: Send },
-  { section: "calls", label: "전화", icon: Phone },
 ];
 
 export function CustomerSectionRail({ activeSection }: { activeSection: CustomerSection }) {

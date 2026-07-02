@@ -1,5 +1,3 @@
-"use client";
-
 import { Hand, MessageSquare, Minus, Plus, Workflow, Zap } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -30,6 +28,7 @@ import {
 } from "./nodeHelpers";
 
 export function TaskFlowDiagram({
+  flowId,
   nodes,
   edges,
   trigger,
@@ -42,6 +41,7 @@ export function TaskFlowDiagram({
   onMoveNode,
   onAutoLayout,
 }: {
+  flowId?: string;
   nodes: TaskNode[];
   edges: TaskEdge[];
   trigger?: {
@@ -62,6 +62,13 @@ export function TaskFlowDiagram({
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [isAutoPanning, setIsAutoPanning] = useState(false);
   const [triggerPosition, setTriggerPosition] = useState({ x: DIAGRAM_PAD, y: DIAGRAM_TRIGGER_Y });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setTriggerPosition({ x: DIAGRAM_PAD, y: DIAGRAM_TRIGGER_Y });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [flowId]);
   const [draggingNode, setDraggingNode] = useState<{
     nodeId: string;
     startClientX: number;
@@ -566,8 +573,6 @@ export function TaskFlowDiagram({
     const nodeCenterY = node.positionY + nodeHeightOf(node) / 2;
     const usableWidth = Math.max(320, viewportSize.width - focusRightInset);
 
-    // 카메라 이동은 외부 트리거(focusNodeId)에 반응하는 부수효과지만, setState를
-    // 다음 틱으로 미뤄 effect 본문에서의 동기 호출을 피한다.
     const panTimer = window.setTimeout(() => {
       setIsAutoPanning(true);
       setOffset({
@@ -576,10 +581,10 @@ export function TaskFlowDiagram({
       });
     }, 0);
 
-    const settleTimer = window.setTimeout(() => setIsAutoPanning(false), 260);
+    const timer = window.setTimeout(() => setIsAutoPanning(false), 260);
     return () => {
       window.clearTimeout(panTimer);
-      window.clearTimeout(settleTimer);
+      window.clearTimeout(timer);
     };
   }, [focusNodeId, focusRightInset, viewportSize.width, viewportSize.height, zoom, nodes.length, !!trigger]);
 

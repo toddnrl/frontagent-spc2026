@@ -6,12 +6,12 @@ export function Footer() {
           <div className="col-span-1 md:col-span-1 text-left">
             <div className="flex items-center gap-2 mb-6">
               <div className="w-8 h-8 rounded-[10px] bg-gray-900 flex items-center justify-center text-white font-bold text-lg">
-                F
+                C
               </div>
-              <span className="font-bold text-[20px] tracking-tight text-gray-900">Front Agent</span>
+              <span className="font-bold text-[20px] tracking-tight text-gray-900">Callbee</span>
             </div>
             <p className="text-[14px] text-gray-500 leading-[1.6] font-medium">
-              Front Agent는 인공지능 기술을 통해 비즈니스의 운영 방식을 혁신합니다.<br />
+              Callbee는 인공지능 기술을 통해 비즈니스의 운영 방식을 혁신합니다.<br />
               고객 상담, 예약 관리, 업무 자동화를 하나의 플랫폼에서 경험하세요.
             </p>
           </div>
@@ -48,7 +48,7 @@ export function Footer() {
         
         <div className="pt-8 border-t border-gray-200 flex flex-col md:flex-row items-center justify-between">
           <p className="text-[13px] text-gray-400 font-medium tracking-wide">
-            © 2024 Front Agent Inc. All rights reserved.
+            © 2024 Callbee Inc. All rights reserved.
           </p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <a href="#" className="text-[13px] font-medium text-gray-500 hover:text-gray-900">이용약관</a>

@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef } from "react";
 
 let sharedShaderStartedAt: number | null = null;
@@ -8,6 +7,7 @@ let sharedShaderStartedAt: number | null = null;
 export function ShaderOrb({ active }: { active: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const activeRef = useRef(active);
+  const activeValueRef = useRef(active ? 1 : 0);
 
   useEffect(() => {
     activeRef.current = active;
@@ -64,7 +64,7 @@ export function ShaderOrb({ active }: { active: boolean }) {
       void main() {
         vec2 uv = v_uv;
         vec2 p = uv - 0.5;
-        float t = u_time * (0.56 + u_active * 0.34);
+        float t = u_time * 0.56;
         float pulse = sin(u_time * 3.8 + fbm(p * 5.5) * 2.4);
         float breath = 0.5 + 0.5 * pulse;
 
@@ -72,7 +72,7 @@ export function ShaderOrb({ active }: { active: boolean }) {
           fbm(p * 3.5 + vec2(t * 1.25, -t * 0.92)),
           fbm(p * 3.5 + vec2(-t * 0.82, t * 1.18))
         ) - 0.5;
-        vec2 q = p + warp * (0.43 + breath * 0.08 + u_active * 0.18);
+        vec2 q = p + warp * (0.43 + breath * 0.08);
 
         float lime = smoothstep(0.58, 0.02, length(q - vec2(-0.25, 0.18)));
         float cyan = smoothstep(0.66, 0.03, length(q - vec2(0.23, 0.20)));
@@ -143,11 +143,14 @@ export function ShaderOrb({ active }: { active: boolean }) {
 
     const render = () => {
       resize();
+      // u_active를 매 프레임 lerp — 배경 움직임·밝기 모두 부드럽게 전환
+      const target = activeRef.current ? 1 : 0;
+      activeValueRef.current += (target - activeValueRef.current) * 0.035;
       gl.useProgram(program);
       gl.enableVertexAttribArray(position);
       gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
       gl.uniform1f(timeUniform, (performance.now() - shaderStartedAt) / 1000);
-      gl.uniform1f(activeUniform, activeRef.current ? 1 : 0);
+      gl.uniform1f(activeUniform, activeValueRef.current);
       gl.uniform2f(resolutionUniform, canvas.width, canvas.height);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       frameId = window.requestAnimationFrame(render);
@@ -180,44 +183,35 @@ export function ShaderOrb({ active }: { active: boolean }) {
         }}
         aria-hidden="true"
       />
-      <AnimatePresence initial={false}>
-        {active && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, filter: "blur(6px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 0.92, filter: "blur(6px)" }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%)]"
-            aria-hidden="true"
-          >
-            <div className="flex h-12 items-center gap-1.5 rounded-full bg-white/10 px-4 backdrop-blur-[1px]">
-              {[18, 30, 22, 38, 26, 34, 20].map((height, index) => (
-                <span
-                  key={index}
-                  className="w-1.5 rounded-full bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.45)]"
-                  style={{
-                    height,
-                    animation: "shader-orb-voice-wave 780ms ease-in-out infinite",
-                    animationDelay: `${index * 80}ms`,
-                  }}
-                />
-              ))}
-            </div>
-            <style>{`
-              @keyframes shader-orb-voice-wave {
-                0%, 100% {
-                  transform: scaleY(0.45);
-                  opacity: 0.55;
-                }
-                50% {
-                  transform: scaleY(1);
-                  opacity: 1;
-                }
-              }
-            `}</style>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {active && (
+        <div
+          className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden rounded-full [clip-path:circle(50%)]"
+          aria-hidden="true"
+        >
+          <div className="flex h-12 items-center gap-1.5 rounded-full bg-white/10 px-4 backdrop-blur-[1px]">
+            {[18, 30, 22, 38, 26, 34, 20].map((height, index) => (
+              <span
+                key={index}
+                className="w-1.5 rounded-full bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.45)]"
+                style={{
+                  height,
+                  animationName: "shader-orb-voice-wave",
+                  animationDuration: "780ms",
+                  animationTimingFunction: "ease-in-out",
+                  animationIterationCount: "infinite",
+                  animationDelay: `${index * 80}ms`,
+                }}
+              />
+            ))}
+          </div>
+          <style>{`
+            @keyframes shader-orb-voice-wave {
+              0%, 100% { transform: scaleY(0.45); opacity: 0.55; }
+              50%       { transform: scaleY(1);    opacity: 1; }
+            }
+          `}</style>
+        </div>
+      )}
     </>
   );
 }

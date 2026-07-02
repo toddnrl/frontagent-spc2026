@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { PaperAirplaneIcon, PhoneIcon } from "@heroicons/react/24/solid";
 import { getEmbedOrganizationId } from "../../../lib/organization";
 import { getAgentApiBaseUrl } from "../../../lib/agentApiBase";
-import { loadActiveCallSession, saveCallSession } from "../../../lib/callSessionStorage";
+import { clearActiveCallSession, loadActiveCallSession, saveCallSession } from "../../../lib/callSessionStorage";
 import { ShaderOrb } from "./ShaderOrb";
 
 const API_BASE = getAgentApiBaseUrl();
@@ -358,6 +358,7 @@ export function CallTab({
 
   const endCallByIdleTimeout = () => {
     if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active") return;
+    const endedSessionId = sessionIdRef.current;
     onTrace?.({
       id: "voice_idle_end",
       title: "무응답 종료",
@@ -370,7 +371,8 @@ export function CallTab({
     setVoiceCallActive(false);
     setCallStatus("ended");
     onTextModeChange?.(false);
-    notifyCallEnded();
+    notifyCallEnded(endedSessionId);
+    rotateSessionForNextConversation();
   };
 
   const schedulePipelineIdleTimeouts = () => {
@@ -457,8 +459,10 @@ export function CallTab({
   const stopRingbackTone = () => {
     if (ringbackTimerRef.current !== null) window.clearInterval(ringbackTimerRef.current);
     ringbackTimerRef.current = null;
-    void ringbackAudioContextRef.current?.close();
+    const ctx = ringbackAudioContextRef.current;
     ringbackAudioContextRef.current = null;
+    // close()를 500ms 뒤에 실행 — 직후 audio.play()와 오디오 세션 간섭 방지
+    if (ctx) setTimeout(() => void ctx.close(), 500);
   };
 
   const startRingbackTone = () => {
@@ -467,7 +471,7 @@ export function CallTab({
     ringbackAudioContextRef.current = audioContext;
 
     const playPulse = () => {
-      if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active") return;
+      if (!isVoiceCallActiveRef.current) return;
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
       oscillator.type = "sine";
@@ -528,6 +532,24 @@ export function CallTab({
     if (conversationIdRef.current === conversationId && !preview?.trim()) return;
     conversationIdRef.current = conversationId;
     persistCallSession(preview);
+  };
+
+  const rotateSessionForNextConversation = () => {
+    clearActiveCallSession(organizationId, userId);
+    sessionIdRef.current = `${sessionIdPrefix}${crypto.randomUUID()}`;
+    conversationIdRef.current = null;
+    seenMessageIdsRef.current.clear();
+    handledCallIdsRef.current.clear();
+    pendingAgentEndSessionRef.current = false;
+    pendingRealtimeResponseEventRef.current = null;
+    realtimeResponseInProgressRef.current = false;
+    lastTranscriptRef.current = null;
+    lastAnswerRef.current = null;
+    setTextMessages([]);
+    onConversationUpdate?.({
+      conversationId: null,
+      sessionId: sessionIdRef.current,
+    });
   };
 
   const parseSsePayload = (payload: string) => {
@@ -783,6 +805,12 @@ export function CallTab({
     audioElementRef.current = audio;
     audio.src = audioUrl;
     setPipelineStatus("speaking");
+    // 재생 준비될 때까지 기다린 후 play — 준비 전 play()하면 앞부분이 잘린다
+    await new Promise<void>((resolve) => {
+      audio.oncanplaythrough = () => { audio.oncanplaythrough = null; resolve(); };
+      // 이미 준비된 경우(readyState 4)엔 이벤트가 안 오므로 즉시 resolve
+      if (audio.readyState >= 4) { audio.oncanplaythrough = null; resolve(); }
+    });
     await audio.play();
     await new Promise<void>((resolve) => {
       // ended/error는 물론, barge-in이 pause()로 끊을 때도 즉시 await를 풀어준다.
@@ -833,11 +861,10 @@ export function CallTab({
     await playAudioBlob(speechBlob, options.turnId);
   };
 
-  const OPENING_GREETING = "안녕하세요, Callbee입니다. 무엇을 도와드릴까요?";
+  const OPENING_GREETING = "안녕하세요, 콜비입니다. 무엇을 도와드릴까요?";
 
   const playOpeningGreeting = async () => {
     try {
-      startRingbackTone();
       await playSpeech(OPENING_GREETING, "voice_opening", "상담 시작 안내", {
         signal: callAbortControllerRef.current?.signal,
         requireActiveCall: true,
@@ -862,6 +889,7 @@ export function CallTab({
   };
 
   const requestAgentAnswer = async (message: string, signal?: AbortSignal) => {
+    const channel = isVoiceCallActiveRef.current ? "web_call" : "web_chat";
     const response = await fetch(`${API_BASE}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -871,7 +899,7 @@ export function CallTab({
         session_id: sessionIdRef.current,
         message,
         stream: false,
-        channel: "web_call",
+        channel,
       }),
     });
 
@@ -928,6 +956,7 @@ export function CallTab({
   // 들려준 뒤 끊어야 하므로 호출자가 음성 재생이 끝난 시점에 호출한다.
   const endCallByAgent = () => {
     if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active") return;
+    const endedSessionId = sessionIdRef.current;
     onTrace?.({
       id: "voice_agent_end",
       title: "AI 통화 종료",
@@ -940,7 +969,8 @@ export function CallTab({
     setVoiceCallActive(false);
     setCallStatus("ended");
     onTextModeChange?.(false);
-    notifyCallEnded();
+    notifyCallEnded(endedSessionId);
+    rotateSessionForNextConversation();
   };
 
   const sendRealtimeEvent = (event: Record<string, unknown>) => {
@@ -1529,6 +1559,7 @@ export function CallTab({
     setCallStatus("connecting");
     setCallSeconds(0);
     setError(null);
+    startRingbackTone();
 
     try {
       const configParams = new URLSearchParams({ organization_id: organizationId });
@@ -1560,8 +1591,8 @@ export function CallTab({
         callStatusRef.current = "active";
         emitCallStartedTrace();
         setPipelineStatus("speaking");
+        await playOpeningGreeting();
         await startPipelineVad(mediaStream);
-        void playOpeningGreeting();
         return;
       }
 
@@ -1626,13 +1657,15 @@ export function CallTab({
         }
         if (["failed", "closed"].includes(peerConnection.connectionState)) {
           if (callStatusRef.current === "ended") return;
+          const endedSessionId = sessionIdRef.current;
           callStatusRef.current = "ended";
           emitCallEndedTrace();
           releaseCallResources();
           setVoiceCallActive(false);
           setCallStatus("ended");
           onTextModeChange?.(false);
-          notifyCallEnded();
+          notifyCallEnded(endedSessionId);
+          rotateSessionForNextConversation();
         }
       };
 
@@ -1653,13 +1686,13 @@ export function CallTab({
     }
   };
 
-  const notifyCallEnded = () => {
+  const notifyCallEnded = (sessionId: string) => {
     fetch(`${API_BASE}/voice/call/end`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         organization_id: organizationId,
-        session_id: sessionIdRef.current,
+        session_id: sessionId,
       }),
     }).catch(() => {
       // 통화 종료 기록 실패는 사용자 흐름을 막지 않는다. 통화 목록에서
@@ -1669,6 +1702,7 @@ export function CallTab({
 
   const endCall = () => {
     if (callStatusRef.current !== "active" && callStatusRef.current !== "connecting") return;
+    const endedSessionId = sessionIdRef.current;
     callStatusRef.current = "ended";
     if (voiceMode === "realtime" && realtimeResponseInProgressRef.current) {
       sendRealtimeEvent({ type: "response.cancel" });
@@ -1680,7 +1714,8 @@ export function CallTab({
     setIsTextCallActive(false);
     setCallStatus("ended");
     onTextModeChange?.(false);
-    notifyCallEnded();
+    notifyCallEnded(endedSessionId);
+    rotateSessionForNextConversation();
   };
 
   const isCallRunning = isVoiceCallActive && (callStatus === "connecting" || callStatus === "active");
@@ -1796,7 +1831,7 @@ export function CallTab({
             layoutId={enableSharedLayout ? "floating-call-orb" : undefined}
             transition={orbTransition}
             onClick={isCallRunning ? undefined : startCall}
-            className={`relative flex h-44 w-44 items-center justify-center overflow-hidden rounded-full bg-[#40c9f4] shadow-[0_22px_56px_rgb(14,165,233,0.3)] ${
+            className={`relative flex h-56 w-56 items-center justify-center overflow-hidden rounded-full bg-[#40c9f4] shadow-[0_22px_56px_rgb(14,165,233,0.3)] ${
               isCallRunning ? "" : "cursor-pointer hover:scale-[1.02]"
             }`}
             role={isCallRunning ? undefined : "button"}

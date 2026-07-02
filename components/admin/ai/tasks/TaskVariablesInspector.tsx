@@ -1,5 +1,3 @@
-"use client";
-
 import { Database, Eye, Pencil, X } from "lucide-react";
 import type { TaskNode } from "../types";
 import { PanelSection } from "./common";

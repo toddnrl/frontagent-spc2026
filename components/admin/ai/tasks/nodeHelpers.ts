@@ -1,4 +1,4 @@
-import { MessageCircle, Sparkles, Zap } from "lucide-react";
+import { Bot, MessageCircle, Sparkles, Zap } from "lucide-react";
 import type { TaskEdge, TaskNode, TaskNodeCreateInput, TaskNodeUpdateInput } from "../types";
 
 export const taskNodeDefinitions = [

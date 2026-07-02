@@ -4,11 +4,10 @@ import { useEffect, useRef } from 'react'
 
 const SECTION_IDS = [
   'hero',
-  'features',
+  'advantages',
   'rules',
   'knowledge',
   'tasks',
-  'advantages',
   'industry',
   'solution',
   'evaluation',

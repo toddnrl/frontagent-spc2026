@@ -15,7 +15,7 @@ export function TasksWorkspace({ organizationId, user }: { organizationId: strin
       <div
         className={
           isBuilderOpen
-            ? "flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[20px] bg-white p-8"
+            ? "col-span-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[20px] bg-white p-8"
             : "min-h-0 min-w-0 overflow-y-auto rounded-[20px] bg-white p-8 [scrollbar-gutter:stable]"
         }
       >

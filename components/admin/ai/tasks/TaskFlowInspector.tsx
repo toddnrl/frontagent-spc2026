@@ -1,5 +1,3 @@
-"use client";
-
 import { GitBranch, Settings2, X, Zap } from "lucide-react";
 import type { TaskNode } from "../types";
 import { PanelInlineSelect, PanelLargeTextArea, PanelSection } from "./common";

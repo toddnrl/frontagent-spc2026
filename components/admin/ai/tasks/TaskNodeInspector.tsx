@@ -1,5 +1,3 @@
-"use client";
-
 import { Bot, GitBranch, ListOrdered, Settings2, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { TaskEdge, TaskNode, TaskNodeUpdateInput } from "../types";
@@ -56,29 +54,15 @@ export function TaskNodeInspector({
   ) => Promise<void>;
   registerSave: (save: (() => Promise<boolean>) | null) => void;
 }) {
-  const outgoingEdges = edges.filter((edge) => edge.sourceNodeKey === node.nodeKey);
-  const primaryOutgoingEdge = outgoingEdges.find((edge) => !isFallbackTaskEdge(edge)) ?? outgoingEdges[0];
-  const failureOutgoingEdge = outgoingEdges.find((edge) => isFallbackTaskEdge(edge));
-  const initialValues = readNodeConfigValues(node);
-  const initialNextStepMode = readNextStepMode(node.config.next_step_mode);
-
   const [label, setLabel] = useState(node.label);
   const [nodeKey, setNodeKey] = useState(node.nodeKey);
-  const [primaryValue, setPrimaryValue] = useState(initialValues.primary);
-  const [secondaryValue, setSecondaryValue] = useState(initialValues.secondary);
-  const [nextStepMode, setNextStepMode] = useState(
-    initialNextStepMode === "single" && outgoingEdges.length > 1 ? "branch" : initialNextStepMode,
-  );
-  const [nextNodeKey, setNextNodeKey] = useState(
-    primaryOutgoingEdge?.targetNodeKey ?? readConfigString(node.config.next_node_key) ?? "",
-  );
+  const [primaryValue, setPrimaryValue] = useState("");
+  const [secondaryValue, setSecondaryValue] = useState("");
+  const [nextStepMode, setNextStepMode] = useState(readNextStepMode(node.config.next_step_mode));
+  const [nextNodeKey, setNextNodeKey] = useState(readConfigString(node.config.next_node_key) ?? "");
   const [branchCondition, setBranchCondition] = useState(readConfigString(node.config.branch_condition) ?? "");
-  const [branchNodeKey, setBranchNodeKey] = useState(
-    primaryOutgoingEdge?.targetNodeKey ?? readConfigString(node.config.branch_node_key) ?? "",
-  );
-  const [fallbackNodeKey, setFallbackNodeKey] = useState(
-    failureOutgoingEdge?.targetNodeKey ?? readConfigString(node.config.fallback_node_key) ?? "",
-  );
+  const [branchNodeKey, setBranchNodeKey] = useState(readConfigString(node.config.branch_node_key) ?? "");
+  const [fallbackNodeKey, setFallbackNodeKey] = useState(readConfigString(node.config.fallback_node_key) ?? "");
   const [timeoutSeconds, setTimeoutSeconds] = useState(String(node.timeoutSeconds));
   const [retryLimit, setRetryLimit] = useState(String(node.retryLimit));
   const [error, setError] = useState<string | null>(null);
@@ -87,12 +71,35 @@ export function TaskNodeInspector({
   const definition = getTaskNodeDefinition(nodeType);
   const Icon = definition.icon;
   const nodePrefix = formatNodePrefix(nodes.findIndex((item) => item.id === node.id));
+  const outgoingEdges = edges.filter((edge) => edge.sourceNodeKey === node.nodeKey);
+  const primaryOutgoingEdge = outgoingEdges.find((edge) => !isFallbackTaskEdge(edge)) ?? outgoingEdges[0];
+  const failureOutgoingEdge = outgoingEdges.find((edge) => isFallbackTaskEdge(edge));
   const memoryOptions = collectMemoryVariableOptions(
     nodes,
     secondaryValue.trim()
       ? { key: normalizeNodeKey(secondaryValue), label: normalizeNodeKey(secondaryValue), source: `${label || definition.label} 저장값` }
       : null,
   );
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const values = readNodeConfigValues(node);
+      setLabel(node.label);
+      setNodeKey(node.nodeKey);
+      setPrimaryValue(values.primary);
+      setSecondaryValue(values.secondary);
+      const configuredNextStepMode = readNextStepMode(node.config.next_step_mode);
+      setNextStepMode(configuredNextStepMode === "single" && outgoingEdges.length > 1 ? "branch" : configuredNextStepMode);
+      setNextNodeKey(primaryOutgoingEdge?.targetNodeKey ?? readConfigString(node.config.next_node_key) ?? "");
+      setBranchCondition(readConfigString(node.config.branch_condition) ?? "");
+      setBranchNodeKey(primaryOutgoingEdge?.targetNodeKey ?? readConfigString(node.config.branch_node_key) ?? "");
+      setFallbackNodeKey(failureOutgoingEdge?.targetNodeKey ?? readConfigString(node.config.fallback_node_key) ?? "");
+      setTimeoutSeconds(String(node.timeoutSeconds));
+      setRetryLimit(String(node.retryLimit));
+      setError(null);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [node.id]);
 
   const buildNodeUpdateInput = ({
     mode = nextStepMode,

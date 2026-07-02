@@ -54,7 +54,7 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex justify-between items-center h-[72px]">
           <div className="flex items-center">
-            <span className="font-bold text-[22px] tracking-tight text-gray-900">Front Agent</span>
+            <span className="font-bold text-[22px] tracking-tight text-gray-900">Callbee</span>
           </div>
 
           {/* Desktop Nav */}

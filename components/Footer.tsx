@@ -13,11 +13,11 @@ export default function Footer() {
                   <circle cx="16" cy="16" r="16" fill="#2f7bf6"/>
                   <path d="M10 16l4 4 8-8" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Front Agent
+                Callbee
               </span>
             </div>
             <p className="max-w-[280px] text-[13.5px] leading-[1.75] text-[#8a90a0]">
-              Front Agent는 인공지능 기술을 통해 비즈니스 운영 방식을 혁신합니다. 고객 상담, 예약 관리, 업무 자동화를 하나의 플랫폼에서 경험하세요.
+              Callbee는 인공지능 기술을 통해 비즈니스 운영 방식을 혁신합니다. 고객 상담, 예약 관리, 업무 자동화를 하나의 플랫폼에서 경험하세요.
             </p>
           </div>
           <div>
@@ -44,7 +44,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="flex flex-wrap justify-between gap-3 border-t border-[rgba(255,255,255,0.08)] pt-[22px] text-[13px] text-[#4a5568]">
-          <span>© 2026 Front Agent Inc. All rights reserved.</span>
+          <span>© 2026 Callbee Inc. All rights reserved.</span>
           <span>
             <a className="text-[#9aa1b3] hover:text-[#e2e8f0]" href="#">이용약관</a>
             &nbsp;&nbsp;

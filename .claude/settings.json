@@ -16,7 +16,14 @@
       "Bash(.agent/bin/python3 -c ' *)",
       "WebSearch",
       "Bash(xargs -I{} basename {})",
-      "Bash(xargs -I{} echo {})"
+      "Bash(xargs -I{} echo {})",
+      "Bash(git -C /Users/yujisan/Projects/frontagent-spc2026 diff HEAD -- components/home/floating/CallTab.tsx)",
+      "Bash(git -C /Users/yujisan/Projects/frontagent-spc2026 checkout HEAD -- components/home/floating/CallTab.tsx)",
+      "Bash(git -C /Users/yujisan/Projects/frontagent-spc2026 show HEAD:components/home/floating/CallTab.tsx)",
+      "Bash(git -C /Users/yujisan/Projects/frontagent-spc2026 log --oneline -5)",
+      "Bash(git -C /Users/yujisan/Projects/frontagent-spc2026 show 7bcbf68 --stat)",
+      "Bash(git -C /Users/yujisan/Projects/frontagent-spc2026 diff 7bcbf68 HEAD -- components/home/floating/CallTab.tsx)",
+      "Bash(git -C /Users/yujisan/Projects/frontagent-spc2026 log --oneline -- components/home/floating/CallTab.tsx)"
     ],
     "additionalDirectories": [
       "/Users/yujisan/Projects/agent-test/app/api",

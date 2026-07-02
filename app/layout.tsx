@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Front Agent · AI 고객 응대 & 예약 자동화',
+  title: 'Callbee · AI 고객 응대 & 예약 자동화',
   description: 'AI 고객 응대 & 예약 자동화 플랫폼',
 }
 

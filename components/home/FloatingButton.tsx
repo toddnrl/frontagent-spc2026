@@ -82,6 +82,10 @@ export function FloatingButton() {
     }
   };
 
+  const openPanel = () => {
+    setIsOpen(true);
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -103,7 +107,7 @@ export function FloatingButton() {
   }, [isOpen]);
 
   const renderPanelBody = () => (
-    <div className="flex h-dvh flex-col sm:h-[680px]">
+    <div className="flex h-dvh flex-col sm:h-[580px]">
       <div className="flex items-center justify-between px-5 py-4">
         {isCallView ? (
           <div className="flex items-center gap-3">
@@ -132,7 +136,7 @@ export function FloatingButton() {
         ) : (
           <div>
             <div className="text-[15px] font-extrabold text-gray-900">
-              Front Agent
+              Callbee
             </div>
             <div className="text-[12px] font-bold text-gray-400">
               AI 상담원에게 문의하기
@@ -203,7 +207,7 @@ export function FloatingButton() {
               exit={{ opacity: 0.96 }}
               transition={surfaceTransition}
               style={{ transformOrigin: "bottom right" }}
-              className="pointer-events-auto fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:relative sm:inset-auto sm:h-[680px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
+              className="pointer-events-auto fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:relative sm:inset-auto sm:h-[580px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
             >
               {renderPanelBody()}
             </motion.div>
@@ -211,7 +215,7 @@ export function FloatingButton() {
             <button
               key="floating-cta"
               type="button"
-              onClick={() => setIsOpen(true)}
+              onClick={openPanel}
               aria-label="AI 상담원 체험하기"
               className="pointer-events-auto group relative flex max-w-[calc(100vw-48px)] items-center gap-3 rounded-full py-2 pl-2 pr-5 text-[15px] font-extrabold text-gray-900 sm:gap-4 sm:py-3 sm:pl-3 sm:pr-7 sm:text-[18px]"
             >

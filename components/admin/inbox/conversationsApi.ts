@@ -37,6 +37,7 @@ const channelLabel: Record<string, string> = {
   web_chat: "채널톡",
   kakao: "카카오톡",
   phone: "전화",
+  web_call: "전화",
   email: "이메일",
   instagram: "인스타그램",
   admin: "관리자",

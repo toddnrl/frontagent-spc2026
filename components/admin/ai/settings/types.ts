@@ -11,7 +11,6 @@ export type OrganizationAiSettings = {
   voice_tts_voice: string;
   elevenlabs_model: string | null;
   elevenlabs_voice_id: string | null;
-  elevenlabs_agent_id: string | null;
   realtime_model: string;
   realtime_voice: string;
   voice_response_style: string;
@@ -47,14 +46,12 @@ export type OrganizationAiSettingsForm = Omit<
   | "decision_model"
   | "elevenlabs_model"
   | "elevenlabs_voice_id"
-  | "elevenlabs_agent_id"
   | "monthly_budget_limit_cents"
   | "monthly_token_limit"
 > & {
   decision_model: string;
   elevenlabs_model: string;
   elevenlabs_voice_id: string;
-  elevenlabs_agent_id: string;
   monthly_budget_limit_cents: string;
   monthly_token_limit: string;
 };
@@ -72,7 +69,6 @@ export const defaultOrganizationAiSettingsForm: OrganizationAiSettingsForm = {
   voice_tts_voice: "marin",
   elevenlabs_model: "eleven_flash_v2_5",
   elevenlabs_voice_id: "",
-  elevenlabs_agent_id: "",
   realtime_model: "gpt-realtime-2",
   realtime_voice: "marin",
   voice_response_style: "friendly_short",

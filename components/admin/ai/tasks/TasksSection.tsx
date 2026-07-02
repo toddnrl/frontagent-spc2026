@@ -1,5 +1,3 @@
-"use client";
-
 import { MoreVertical, Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
@@ -117,13 +115,7 @@ export function TasksSection({
   };
 
   const handleCreateTaskAndOpen = async () => {
-    const created = await onCreate({
-      name: "새 태스크",
-      trigger_description: defaultTriggerDescription,
-      allowed_channels: ["chat", "voice"],
-      is_enabled: true,
-    });
-    openBuilder(created.id, created);
+    openBuilder("__new__");
   };
 
   if (builderFlowId) {
@@ -132,6 +124,11 @@ export function TasksSection({
     );
     const nodes = flow ? taskNodesByFlowId[flow.id] ?? [] : [];
     const edges = flow ? taskEdgesByFlowId[flow.id] ?? [] : [];
+    const handleCreateFromBuilder = async (input: TaskFlowCreateInput) => {
+      const created = await onCreate(input);
+      openBuilder(created.id, created);
+      return created;
+    };
 
     return (
       <motion.div
@@ -151,7 +148,7 @@ export function TasksSection({
           isMutating={isMutating}
           error={error}
           onBack={closeBuilder}
-          onCreate={onCreate}
+          onCreate={handleCreateFromBuilder}
           onUpdate={onUpdate}
           onCreateNode={onCreateNode}
           onUpdateNode={onUpdateNode}
@@ -199,13 +196,13 @@ export function TasksSection({
           </div>
         </Card>
       ) : (
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid gap-3">
         {taskFlows.map((task) => (
-          <Card key={task.id} size="sm" className="min-w-0 overflow-hidden">
-            <div className="flex min-w-0 items-center justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-2">
-                  <h3 className="min-w-0 truncate text-[16px] font-bold">{task.name}</h3>
+          <Card key={task.id} size="sm">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="mb-1 flex items-center gap-2">
+                  <h3 className="truncate text-[16px] font-bold">{task.name}</h3>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                       task.isEnabled ? "bg-blue-50 text-blue-600" : "bg-[#f2f2f2] text-gray-500"

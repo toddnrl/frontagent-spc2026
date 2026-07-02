@@ -1,5 +1,3 @@
-"use client";
-
 import { ArrowLeft, CheckCircle2, Database, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Toggle } from "../../ui";
@@ -598,7 +596,7 @@ export function TaskBuilderPage({
 
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-[20px] border border-gray-200">
         <TaskFlowDiagram
-          key={flow?.id ?? "new"}
+          flowId={flow?.id ?? "new"}
           nodes={draftNodes}
           edges={visualEdges}
           trigger={{
@@ -667,7 +665,6 @@ export function TaskBuilderPage({
 
         {flow && selectedNode && (
           <TaskNodeInspector
-            key={selectedNode.id}
             node={selectedNode}
             nodes={draftNodes}
             edges={visualEdges}

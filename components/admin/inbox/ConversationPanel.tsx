@@ -27,6 +27,10 @@ function formatMessageTime(value?: string | null) {
   return parseUtcTimestamp(value).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
 
+function formatConversationText(text: string) {
+  return text.replace(/\bfront agent\b/gi, "Callbee").replace(/\balf voice\b/gi, "Callbee");
+}
+
 const MESSAGE_POLL_INTERVAL_MS = 4000;
 
 function LiveConversationBody({
@@ -90,14 +94,14 @@ function LiveConversationBody({
       {messages.map((item) => (
         <div key={item.id}>
           {item.senderType === "customer" ? (
-            <CustomerBubble text={item.message} />
+            <CustomerBubble text={formatConversationText(item.message)} />
           ) : item.senderType === "system" ? (
-            <ActivityDivider label={item.message} />
+            <ActivityDivider label={formatConversationText(item.message)} />
           ) : (
             <AgentMessage
-              name={item.senderName ?? (item.senderType === "admin" ? "관리자" : "AI")}
+              name={item.senderName ?? (item.senderType === "admin" ? "관리자" : "Callbee")}
               time={formatMessageTime(item.createdAt)}
-              text={item.message}
+              text={formatConversationText(item.message)}
             />
           )}
         </div>

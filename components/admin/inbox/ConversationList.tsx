@@ -1,5 +1,5 @@
 import type { User } from "@supabase/supabase-js";
-import { useEffect, useMemo, useState, type ReactNode, type UIEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type UIEvent } from "react";
 import {
   Bell,
   Box,
@@ -73,15 +73,17 @@ function getVisibleConversations(
   if (viewId === "preview") return conversations.filter((conversation) => conversation.isInternalTest);
 
   const withoutPreview = conversations.filter((conversation) => !conversation.isInternalTest);
+  // 수신함은 전화 채널 제외 — 전화는 전화 페이지에서만 확인
+  const chatOnly = withoutPreview.filter((conversation) => conversation.channel !== "전화");
 
-  if (viewId === "unread") return withoutPreview.slice(0, 2);
-  if (viewId === "favorite") return withoutPreview.filter((conversation) => conversation.id === "park-jieun");
-  if (viewId === "scheduled") return withoutPreview.filter((conversation) => conversation.id === "oh-yejin");
+  if (viewId === "unread") return chatOnly.slice(0, 2);
+  if (viewId === "favorite") return chatOnly.filter((conversation) => conversation.id === "park-jieun");
+  if (viewId === "scheduled") return chatOnly.filter((conversation) => conversation.id === "oh-yejin");
   if (viewId === "service-phone") return withoutPreview.filter((conversation) => conversation.channel === "전화");
-  if (viewId === "service-email") return withoutPreview.filter((conversation) => conversation.channel === "이메일");
-  if (viewId === "service-chat") return withoutPreview.filter((conversation) => conversation.channel !== "전화" && conversation.channel !== "이메일");
+  if (viewId === "service-email") return chatOnly.filter((conversation) => conversation.channel === "이메일");
+  if (viewId === "service-chat") return chatOnly.filter((conversation) => conversation.channel !== "이메일");
 
-  return withoutPreview;
+  return chatOnly;
 }
 
 function getInboxView(id: InboxViewId) {
@@ -109,17 +111,22 @@ function SidebarGroup({
 export function ConversationList({
   selectedId,
   onSelect,
+  onLoaded,
   user,
 }: {
   selectedId: string;
   onSelect: (id: string, conversation: Conversation) => void;
+  onLoaded?: (conversations: Conversation[]) => void;
   user: User;
 }) {
   const [selectedInboxView, setSelectedInboxView] =
     useState<InboxViewId>("all");
   const [liveConversations, setLiveConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const organizationId = getOrganizationId(user);
+  const onLoadedRef = useRef(onLoaded);
+  onLoadedRef.current = onLoaded;
 
   useEffect(() => {
     let isMounted = true;
@@ -127,10 +134,17 @@ export function ConversationList({
     function load() {
       return fetchConversations(organizationId)
         .then((items) => {
-          if (isMounted) setLiveConversations(items);
+          if (!isMounted) return;
+          const filtered = items.filter((c) => c.channel !== "전화");
+          setLiveConversations(filtered);
+          setIsLoading(false);
+          onLoadedRef.current?.(filtered);
         })
         .catch(() => {
-          if (isMounted) setLiveConversations([]);
+          if (!isMounted) return;
+          setLiveConversations([]);
+          setIsLoading(false);
+          onLoadedRef.current?.([]);
         });
     }
 
@@ -143,8 +157,9 @@ export function ConversationList({
     };
   }, [organizationId]);
 
+  // 실제 데이터가 있으면 목업 숨김
   const conversations = useMemo(
-    () => [...liveConversations, ...mockConversations],
+    () => liveConversations.length > 0 ? liveConversations : mockConversations,
     [liveConversations],
   );
   const activeInboxView =
@@ -259,7 +274,20 @@ export function ConversationList({
         </div>
 
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1" onScroll={handleListScroll}>
-          {visibleConversations.map((conversation) => (
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-[16px] bg-white p-3">
+                <div className="flex gap-3">
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-gray-200" />
+                  <div className="flex-1 space-y-2 py-1">
+                    <div className="h-3 w-3/4 rounded bg-gray-200" />
+                    <div className="h-3 w-1/2 rounded bg-gray-200" />
+                    <div className="h-3 w-full rounded bg-gray-100" />
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : visibleConversations.map((conversation) => (
             <button
               key={conversation.id}
               onClick={() => onSelect(conversation.id, conversation)}

@@ -553,7 +553,7 @@ export async function updateService(
   if (data.isReservable !== undefined) body.is_reservable = data.isReservable;
 
   const response = await fetch(
-    `${getAgentApiBaseUrl()}/reservations/services/${encodeURIComponent(serviceId)}?organization_id=${encodeURIComponent(organizationId)}`,
+    `${getAgentApiBaseUrl()}/services/${encodeURIComponent(serviceId)}?organization_id=${encodeURIComponent(organizationId)}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -572,7 +572,7 @@ export async function updateService(
 
 export async function deleteService(organizationId: string, serviceId: string) {
   const response = await fetch(
-    `${getAgentApiBaseUrl()}/reservations/services/${encodeURIComponent(serviceId)}?organization_id=${encodeURIComponent(organizationId)}`,
+    `${getAgentApiBaseUrl()}/services/${encodeURIComponent(serviceId)}?organization_id=${encodeURIComponent(organizationId)}`,
     { method: "DELETE" },
   );
 
@@ -615,7 +615,9 @@ export async function createServiceItem(organizationId: string, serviceId: strin
   });
 
   if (!response.ok) throw new Error(await readAgentApiError(response));
-  return mapServiceItemRecord((await response.json()) as ServiceItemRecord);
+  const payload = (await response.json()) as { item?: ServiceItemRecord };
+  if (!payload.item) throw new Error("서비스 아이템 생성 응답이 올바르지 않습니다.");
+  return mapServiceItemRecord(payload.item);
 }
 
 export async function updateServiceItem(organizationId: string, serviceItemId: string, data: ServiceItemInput) {
@@ -626,7 +628,9 @@ export async function updateServiceItem(organizationId: string, serviceItemId: s
   });
 
   if (!response.ok) throw new Error(await readAgentApiError(response));
-  return mapServiceItemRecord((await response.json()) as ServiceItemRecord);
+  const payload = (await response.json()) as { item?: ServiceItemRecord };
+  if (!payload.item) throw new Error("서비스 아이템 수정 응답이 올바르지 않습니다.");
+  return mapServiceItemRecord(payload.item);
 }
 
 export async function deleteServiceItem(organizationId: string, serviceItemId: string) {
@@ -650,7 +654,9 @@ export async function createServiceItemOption(
   });
 
   if (!response.ok) throw new Error(await readAgentApiError(response));
-  return mapServiceItemOptionRecord((await response.json()) as ServiceItemOptionRecord);
+  const payload = (await response.json()) as { option?: ServiceItemOptionRecord };
+  if (!payload.option) throw new Error("서비스 옵션 생성 응답이 올바르지 않습니다.");
+  return mapServiceItemOptionRecord(payload.option);
 }
 
 export async function updateServiceItemOption(
@@ -665,7 +671,9 @@ export async function updateServiceItemOption(
   });
 
   if (!response.ok) throw new Error(await readAgentApiError(response));
-  return mapServiceItemOptionRecord((await response.json()) as ServiceItemOptionRecord);
+  const payload = (await response.json()) as { option?: ServiceItemOptionRecord };
+  if (!payload.option) throw new Error("서비스 옵션 수정 응답이 올바르지 않습니다.");
+  return mapServiceItemOptionRecord(payload.option);
 }
 
 export async function deleteServiceItemOption(organizationId: string, optionId: string) {
