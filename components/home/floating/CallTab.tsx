@@ -32,6 +32,7 @@ const BARGE_IN_START_THRESHOLD = 0.065;
 const BARGE_IN_MIN_FRAMES = 4;
 const IDLE_WARNING_MS = 30000;
 const IDLE_END_AFTER_WARNING_MS = 15000;
+const FIRST_AUDIO_PRIME_DELAY_MS = 80;
 
 const orbTransition = {
   layout: { type: "tween" as const, duration: 0.42, ease: [0.22, 1, 0.36, 1] as const },
@@ -122,6 +123,9 @@ const audioUploadLabel = (audioBlob: Blob) => {
 
 const audioUploadFileName = (audioBlob: Blob) => audioFileNameForMimeType(audioBlob.type || "audio/webm");
 
+const isRealtimeEndToolName = (name: string) =>
+  ["end_session", "end_call", "hang_up", "terminate_call"].includes(name);
+
 async function fetchConversationMessages(
   conversationId: string,
   organizationId: string,
@@ -175,6 +179,7 @@ export function CallTab({
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const realtimeResponseInProgressRef = useRef(false);
+  const realtimeOpeningGreetingRef = useRef(false);
   const pendingRealtimeResponseEventRef = useRef<Record<string, unknown> | null>(null);
   const handledCallIdsRef = useRef(new Set<string>());
   // AI가 should_end_session을 받았을 때, 마지막 인사 음성이 다 끝날 때까지
@@ -430,6 +435,7 @@ export function CallTab({
     mediaRecorderRef.current = null;
     recordedChunksRef.current = [];
     realtimeResponseInProgressRef.current = false;
+    realtimeOpeningGreetingRef.current = false;
     pendingRealtimeResponseEventRef.current = null;
 
     dataChannelRef.current?.close();
@@ -543,6 +549,7 @@ export function CallTab({
     pendingAgentEndSessionRef.current = false;
     pendingRealtimeResponseEventRef.current = null;
     realtimeResponseInProgressRef.current = false;
+    realtimeOpeningGreetingRef.current = false;
     lastTranscriptRef.current = null;
     lastAnswerRef.current = null;
     setTextMessages([]);
@@ -793,7 +800,14 @@ export function CallTab({
     };
   };
 
-  const playAudioBlob = async (audioBlob: Blob, turnId?: number) => {
+  const isVoiceAudioAllowed = () =>
+    isVoiceCallActiveRef.current && (callStatusRef.current === "connecting" || callStatusRef.current === "active");
+
+  const playAudioBlob = async (
+    audioBlob: Blob,
+    turnId?: number,
+    options: { shouldPlay?: () => boolean; onBeforePlay?: () => void; primeBeforePlay?: boolean } = {},
+  ) => {
     if (turnId !== undefined && !isCurrentPipelineTurn(turnId)) return;
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     const audioUrl = URL.createObjectURL(audioBlob);
@@ -805,12 +819,18 @@ export function CallTab({
     audioElementRef.current = audio;
     audio.src = audioUrl;
     setPipelineStatus("speaking");
-    // 재생 준비될 때까지 기다린 후 play — 준비 전 play()하면 앞부분이 잘린다
+    // 재생 준비될 때까지 기다린 후 play - 준비 전 play()하면 앞부분이 잘린다
     await new Promise<void>((resolve) => {
       audio.oncanplaythrough = () => { audio.oncanplaythrough = null; resolve(); };
       // 이미 준비된 경우(readyState 4)엔 이벤트가 안 오므로 즉시 resolve
       if (audio.readyState >= 4) { audio.oncanplaythrough = null; resolve(); }
     });
+    if (options.shouldPlay && !options.shouldPlay()) return;
+    options.onBeforePlay?.();
+    if (options.shouldPlay && !options.shouldPlay()) return;
+    if (options.primeBeforePlay) {
+      await new Promise((resolve) => window.setTimeout(resolve, FIRST_AUDIO_PRIME_DELAY_MS));
+    }
     await audio.play();
     await new Promise<void>((resolve) => {
       // ended/error는 물론, barge-in이 pause()로 끊을 때도 즉시 await를 풀어준다.
@@ -825,9 +845,15 @@ export function CallTab({
     text: string,
     traceId = "voice_tts",
     traceTitle = "음성 생성",
-    options: { turnId?: number; signal?: AbortSignal; requireActiveCall?: boolean } = {},
+    options: {
+      turnId?: number;
+      signal?: AbortSignal;
+      requireActiveCall?: boolean;
+      onBeforePlay?: () => void;
+      primeBeforePlay?: boolean;
+    } = {},
   ) => {
-    if (options.requireActiveCall && (!isVoiceCallActiveRef.current || callStatusRef.current !== "active")) return;
+    if (options.requireActiveCall && !isVoiceAudioAllowed()) return;
     const stepStartedAt = performance.now();
     onTrace?.({ id: traceId, title: traceTitle, status: "active", detail: "TTS 처리 중" });
 
@@ -843,11 +869,11 @@ export function CallTab({
       }),
     });
     if (!speechResponse.ok) throw new Error(`음성 생성 실패 (HTTP ${speechResponse.status})`);
-    if (options.requireActiveCall && (!isVoiceCallActiveRef.current || callStatusRef.current !== "active")) return;
+    if (options.requireActiveCall && !isVoiceAudioAllowed()) return;
     if (options.turnId !== undefined && !isCurrentPipelineTurn(options.turnId)) return;
 
     const speechBlob = await speechResponse.blob();
-    if (options.requireActiveCall && (!isVoiceCallActiveRef.current || callStatusRef.current !== "active")) return;
+    if (options.requireActiveCall && !isVoiceAudioAllowed()) return;
     if (options.turnId !== undefined && !isCurrentPipelineTurn(options.turnId)) return;
     onTrace?.({
       id: traceId,
@@ -858,7 +884,11 @@ export function CallTab({
       elapsedMs: Math.round(performance.now() - stepStartedAt),
     });
 
-    await playAudioBlob(speechBlob, options.turnId);
+    await playAudioBlob(speechBlob, options.turnId, {
+      shouldPlay: options.requireActiveCall ? isVoiceAudioAllowed : undefined,
+      onBeforePlay: options.onBeforePlay,
+      primeBeforePlay: options.primeBeforePlay,
+    });
   };
 
   const OPENING_GREETING = "안녕하세요, 콜비입니다. 무엇을 도와드릴까요?";
@@ -868,6 +898,13 @@ export function CallTab({
       await playSpeech(OPENING_GREETING, "voice_opening", "상담 시작 안내", {
         signal: callAbortControllerRef.current?.signal,
         requireActiveCall: true,
+        primeBeforePlay: true,
+        onBeforePlay: () => {
+          if (!isVoiceCallActiveRef.current || callStatusRef.current !== "connecting") return;
+          setCallStatus("active");
+          callStatusRef.current = "active";
+          emitCallStartedTrace();
+        },
       });
       // 인사 텍스트를 대화 내역에 추가한다.
       setTextMessages((messages) => [
@@ -1011,6 +1048,41 @@ export function CallTab({
     requestRealtimeResponse();
   };
 
+  const handleRealtimeEndTool = (call: RealtimeFunctionCall) => {
+    if (handledCallIdsRef.current.has(call.call_id)) return;
+    handledCallIdsRef.current.add(call.call_id);
+    pendingAgentEndSessionRef.current = true;
+
+    let message = "";
+    try {
+      const args = JSON.parse(call.arguments) as { message?: unknown; reason?: unknown };
+      const rawMessage = typeof args.message === "string" ? args.message : args.reason;
+      if (typeof rawMessage === "string") message = rawMessage.trim();
+    } catch {
+      // 종료 tool은 인자 파싱 실패와 무관하게 종료 안내를 진행한다.
+    }
+
+    if (message) {
+      setTextMessages((messages) => [...messages, { id: `user_${Date.now()}`, role: "user", text: message }]);
+    }
+
+    sendRealtimeEvent({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: call.call_id,
+        output: JSON.stringify({ should_end_session: true, answer: "통화를 종료합니다." }),
+      },
+    });
+    requestRealtimeResponse({
+      type: "response.create",
+      response: {
+        tool_choice: "none",
+        instructions: "종료 tool 결과에 따라 짧게 인사하고 통화를 종료하겠다고 말해라. 추가 질문은 하지 마라.",
+      },
+    });
+  };
+
   const queryAgent = async (call: RealtimeFunctionCall) => {
     if (handledCallIdsRef.current.has(call.call_id)) return;
     handledCallIdsRef.current.add(call.call_id);
@@ -1041,15 +1113,6 @@ export function CallTab({
     }
     setTextMessages((messages) => [...messages, { id: `agent_${Date.now()}`, role: "agent", text: answer }]);
 
-    // end_session이면 Realtime에 응답 생성을 요청하지 않고 바로 끊는다.
-    // "active response in progress" 에러를 피하고, 마지막 인사 텍스트는
-    // 이미 textMessages에 추가했으므로 음성 재생 없이 종료해도 자연스럽다.
-    if (pendingAgentEndSessionRef.current) {
-      pendingAgentEndSessionRef.current = false;
-      endCallByAgent();
-      return;
-    }
-
     sendRealtimeEvent({
       type: "conversation.item.create",
       item: {
@@ -1067,11 +1130,29 @@ export function CallTab({
     });
   };
 
+  const handleRealtimeFunctionCall = (call: RealtimeFunctionCall) => {
+    if (isRealtimeEndToolName(call.name)) {
+      handleRealtimeEndTool(call);
+      return;
+    }
+    if (call.name === "search_knowledge" || call.name === "task_action") {
+      setPipelineStatus("processing");
+      void queryAgent(call);
+    }
+  };
+
   const handleRealtimeEvent = (rawEvent: string) => {
     let event: RealtimeResponseDoneEvent | RealtimeErrorEvent | { type?: string };
     try {
       event = JSON.parse(rawEvent);
     } catch {
+      return;
+    }
+    const realtimeEvent = event as Record<string, unknown>;
+
+    if (event.type === "response.output_item.done") {
+      const item = realtimeEvent.item as RealtimeFunctionCall | undefined;
+      if (item?.type === "function_call") handleRealtimeFunctionCall(item);
       return;
     }
 
@@ -1122,37 +1203,26 @@ export function CallTab({
         setPipelineStatus("processing");
         return;
       }
-      if (event.type !== "input_audio_buffer.speech_started") {
-        setRealtimeMicrophoneEnabled(true);
-        setPipelineStatus("listening");
+      if (event.type === "input_audio_buffer.speech_started") {
+        setPipelineStatus("recording");
+        return;
       }
+      if (event.type === "output_audio_buffer.stopped") {
+        realtimeOpeningGreetingRef.current = false;
+        if (pendingAgentEndSessionRef.current) {
+          pendingAgentEndSessionRef.current = false;
+          endCallByAgent();
+          return;
+        }
+      } else if (realtimeOpeningGreetingRef.current) {
+        return;
+      }
+      setRealtimeMicrophoneEnabled(true);
+      setPipelineStatus("listening");
     }
 
     if (event.type !== "response.done") return;
     realtimeResponseInProgressRef.current = false;
-    const output = (event as RealtimeResponseDoneEvent).response?.output ?? [];
-    const isWebCallTool = (item: RealtimeFunctionCall | { type: string }) =>
-      item.type === "function_call" &&
-      "name" in item &&
-      (item.name === "search_knowledge" || item.name === "task_action");
-    const hasFunctionCall = output.some(isWebCallTool);
-    if (hasFunctionCall) {
-      output.forEach((item) => {
-        if (isWebCallTool(item)) {
-          setPipelineStatus("processing");
-          void queryAgent(item as RealtimeFunctionCall);
-        }
-      });
-      return;
-    }
-
-    // function_call이 없는 response.done은 직전 답변을 음성으로 다 읽은
-    // 시점이다 - AI가 종료를 요청했다면 여기서 끊어야 마지막 인사가 잘리지 않는다.
-    if (pendingAgentEndSessionRef.current) {
-      pendingAgentEndSessionRef.current = false;
-      endCallByAgent();
-      return;
-    }
 
     const pendingRealtimeResponseEvent = pendingRealtimeResponseEventRef.current;
     if (pendingRealtimeResponseEvent) {
@@ -1559,7 +1629,6 @@ export function CallTab({
     setCallStatus("connecting");
     setCallSeconds(0);
     setError(null);
-    startRingbackTone();
 
     try {
       const configParams = new URLSearchParams({ organization_id: organizationId });
@@ -1574,6 +1643,7 @@ export function CallTab({
       // mode를 내려주므로 그 값을 그대로 따른다.
       const configuredMode: VoiceMode = configData.mode === "realtime" ? "realtime" : "pipeline";
       setVoiceMode(configuredMode);
+      if (configuredMode === "pipeline") startRingbackTone();
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -1584,12 +1654,10 @@ export function CallTab({
       });
       mediaStreamRef.current = mediaStream;
       setHasMediaStream(true);
+      if (configuredMode === "realtime") setRealtimeMicrophoneEnabled(false);
 
       if (configuredMode === "pipeline") {
         audioElementRef.current = document.createElement("audio");
-        setCallStatus("active");
-        callStatusRef.current = "active";
-        emitCallStartedTrace();
         setPipelineStatus("speaking");
         await playOpeningGreeting();
         await startPipelineVad(mediaStream);
@@ -1601,9 +1669,14 @@ export function CallTab({
 
       const audioElement = document.createElement("audio");
       audioElement.autoplay = true;
+      audioElement.setAttribute("playsinline", "true");
       audioElementRef.current = audioElement;
       peerConnection.ontrack = (event) => {
         audioElement.srcObject = event.streams[0];
+        void audioElement.play().catch(() => {
+          // 사용자 클릭으로 시작된 통화라 대부분 허용되지만, 브라우저가 막으면
+          // autoplay 재시도에 맡긴다.
+        });
       };
 
       mediaStream.getTracks().forEach((track) => peerConnection.addTrack(track, mediaStream));
@@ -1621,6 +1694,8 @@ export function CallTab({
         // 사용자가 먼저 말하기를 기다리지 않고, 연결되면 상담원처럼 먼저 인사한다.
         // tool_choice: none으로 보내 인사 turn에는 search_knowledge/task_action이
         // 호출되지 않게 한다.
+        realtimeOpeningGreetingRef.current = true;
+        setRealtimeMicrophoneEnabled(false);
         requestRealtimeResponse({
           type: "response.create",
           response: {
