@@ -46,3 +46,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# VAD WASM/ONNX 바이너리 — pnpm install 후 scripts/copy-vad-assets.mjs로 자동 복사
+/public/vad/
+
+# Claude Code 로컬 설정
+.claude/settings.json
