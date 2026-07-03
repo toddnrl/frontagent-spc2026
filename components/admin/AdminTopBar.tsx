@@ -4,14 +4,15 @@ import type { User } from "@supabase/supabase-js";
 import { ChevronDown, LogOut, Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
 import type { OrganizationMembership } from "../../lib/organization";
-import { Avatar } from "./ui";
+import { TabRow } from "@/components/ui/TabRow";
+import { Popover } from "@/components/ui/Popover";
+import { Avatar } from "@/components/ui/Avatar";
 
-const tabs = [
-  { label: "고객", href: "/admin/inbox" },
-  { label: "팀", href: "/admin/team" },
-  { label: "AI CoS", href: "/admin/ai" },
+const adminTabs = [
+  { id: "inbox", label: "고객", href: "/admin/inbox" },
+  { id: "team", label: "팀", href: "/admin/team" },
+  { id: "ai", label: "AI CoS", href: "/admin/ai" },
 ] as const;
 
 export function AdminTopBar({
@@ -28,10 +29,8 @@ export function AdminTopBar({
   onOrganizationChange?: (organizationId: string) => void;
 }) {
   const pathname = usePathname();
-  const activeTabIndex = tabs.findIndex((tab) => pathname.startsWith(tab.href));
-  const indicatorIndex = activeTabIndex >= 0 ? activeTabIndex : tabs.length - 1;
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const avatarRef = useRef<HTMLDivElement>(null);
+  const activeTabId =
+    adminTabs.find((tab) => pathname.startsWith(tab.href))?.id ?? adminTabs[adminTabs.length - 1].id;
 
   return (
     <header className="flex h-[70px] items-center justify-between px-5">
@@ -57,58 +56,40 @@ export function AdminTopBar({
         )}
       </div>
 
-      <div className="relative grid w-[276px] grid-cols-3 rounded-full bg-white/70 p-1 shadow-inner">
-        <div
-          className="absolute bottom-1 left-1 top-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${indicatorIndex * 100}%)` }}
-        />
-        {tabs.map((tab, index) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={`relative z-10 flex h-10 items-center justify-center rounded-full text-[15px] font-bold transition-colors duration-200 ${
-              index === indicatorIndex ? "text-gray-950" : "text-gray-400"
-            }`}
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </div>
+      <TabRow
+        variant="header"
+        tabs={[...adminTabs]}
+        active={activeTabId}
+        className="w-[276px]"
+      />
 
       <div className="flex items-center gap-3">
         <button className="flex h-11 items-center gap-2 rounded-full bg-white px-4 text-gray-500 shadow-sm">
           <Search className="h-5 w-5" />
           <span className="text-[15px] font-semibold">검색</span>
         </button>
-        <div ref={avatarRef} className="relative">
+        <Popover
+          trigger={
+            <button className="flex h-11 items-center gap-2 rounded-full bg-white px-3 shadow-sm hover:bg-gray-50 transition-colors">
+              <Avatar label={user.user_metadata?.name?.[0] ?? user.email?.[0] ?? "U"} />
+              <span className="text-[12px] font-bold text-green-500">●</span>
+            </button>
+          }
+        >
+          <div className="border-b border-gray-100 px-4 py-3">
+            <p className="truncate text-[13px] font-bold text-gray-900">
+              {user.user_metadata?.name ?? user.email ?? "사용자"}
+            </p>
+            <p className="truncate text-[11px] font-medium text-gray-400">{user.email}</p>
+          </div>
           <button
-            onClick={() => setPopoverOpen((v) => !v)}
-            className="flex h-11 items-center gap-2 rounded-full bg-white px-3 shadow-sm"
+            onClick={onLogout}
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-semibold text-red-500 transition-colors hover:bg-red-50"
           >
-            <Avatar label={user.user_metadata?.name?.[0] ?? user.email?.[0] ?? "U"} />
-            <span className="text-[12px] font-bold text-green-500">●</span>
+            <LogOut className="h-4 w-4" />
+            로그아웃
           </button>
-          {popoverOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setPopoverOpen(false)} />
-              <div className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[180px] overflow-hidden rounded-[16px] bg-white py-1.5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-                <div className="border-b border-gray-100 px-4 py-2.5">
-                  <p className="text-[13px] font-bold text-gray-900 truncate">
-                    {user.user_metadata?.name ?? user.email ?? "사용자"}
-                  </p>
-                  <p className="text-[11px] font-medium text-gray-400 truncate">{user.email}</p>
-                </div>
-                <button
-                  onClick={() => { setPopoverOpen(false); onLogout(); }}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-semibold text-red-500 hover:bg-red-50 transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                  로그아웃
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        </Popover>
       </div>
     </header>
   );

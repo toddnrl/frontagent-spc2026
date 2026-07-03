@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import useSWR, { type KeyedMutator } from "swr";
 import type { KnowledgeChunk, KnowledgeFolder, KnowledgeSource } from "../types";
 import {
   createKnowledgeFolder,
@@ -9,119 +10,130 @@ import {
   deleteKnowledgeFolder,
   deleteKnowledgeSource,
   fetchKnowledgeChunks,
-  fetchKnowledgeFolders,
-  fetchKnowledgeSources,
+  fetchKnowledgeSource,
+  fetchKnowledgeWorkspaceData,
+  getKnowledgeChunksKey,
+  getKnowledgeWorkspaceKey,
   mapKnowledgeStatus,
   reindexKnowledgeSource,
+  type KnowledgeWorkspaceData,
   updateKnowledgeChunk,
   updateKnowledgeFolder,
   updateKnowledgeSource,
   uploadKnowledgeSource,
 } from "./knowledgeApi";
+import { fetchPendingServices } from "../../inbox/reservationsApi";
 
 export const UNFILED_FOLDER_ID = "__unfiled__";
 
 const INDEXING_STATUSES = ["processing", "chunking", "embedding", "indexing"];
 
-export function useKnowledgeWorkspace(organizationId: string) {
-  const [knowledge, setKnowledge] = useState<KnowledgeSource[]>([]);
-  const [knowledgeFolders, setKnowledgeFolders] = useState<KnowledgeFolder[]>([]);
-  const [knowledgeChunks, setKnowledgeChunks] = useState<KnowledgeChunk[]>([]);
-  const [isKnowledgeLoading, setIsKnowledgeLoading] = useState(false);
-  const [isKnowledgeChunksLoading, setIsKnowledgeChunksLoading] = useState(false);
-  const [knowledgeError, setKnowledgeError] = useState<string | null>(null);
+function patchKnowledgeCache(
+  mutate: KeyedMutator<KnowledgeWorkspaceData>,
+  patch: (current: KnowledgeWorkspaceData) => KnowledgeWorkspaceData,
+) {
+  return mutate((current) => (current ? patch(current) : current), { revalidate: false });
+}
+
+function toErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function syncSelectionFromData(
+  data: KnowledgeWorkspaceData,
+  setSelectedKnowledgeId: (value: string | ((current: string) => string)) => void,
+  setSelectedFolder: (value: string | null | ((current: string | null) => string | null)) => void,
+) {
+  setSelectedKnowledgeId((current) => {
+    if (data.knowledge.length === 0) return "";
+    return data.knowledge.some((source) => source.id === current) ? current : data.knowledge[0].id;
+  });
+  setSelectedFolder((current) => {
+    const folderIds = [
+      ...data.knowledgeFolders.map((folder) => folder.id),
+      ...(data.knowledge.some((source) => !source.folderId) ? [UNFILED_FOLDER_ID] : []),
+    ];
+    return current && folderIds.includes(current) ? current : null;
+  });
+}
+
+export function useKnowledgeWorkspace(
+  organizationId: string,
+  onNewPendingServices?: (count: number) => void,
+) {
+  const swrKey = organizationId ? getKnowledgeWorkspaceKey(organizationId) : null;
+  const { data, error, isLoading, mutate } = useSWR(swrKey, () => fetchKnowledgeWorkspaceData(organizationId));
+
+  const knowledge = data?.knowledge ?? [];
+  const knowledgeFolders = data?.knowledgeFolders ?? [];
+
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState("");
   const [isKnowledgeMutating, setIsKnowledgeMutating] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [knowledgeSearch, setKnowledgeSearch] = useState("");
   const [peekSource, setPeekSource] = useState<KnowledgeSource | null>(null);
 
-  const reloadKnowledge = useCallback(async () => {
-    setIsKnowledgeLoading(true);
-    setKnowledgeError(null);
+  const chunksKey =
+    organizationId && selectedKnowledgeId
+      ? getKnowledgeChunksKey(organizationId, selectedKnowledgeId)
+      : null;
+  const {
+    data: knowledgeChunks = [],
+    isLoading: isKnowledgeChunksLoading,
+    mutate: mutateChunks,
+  } = useSWR(chunksKey, () => fetchKnowledgeChunks(organizationId, selectedKnowledgeId));
 
+  const knowledgeError =
+    mutationError ??
+    (error instanceof Error ? error.message : error ? "Knowledge API 조회 실패" : null);
+
+  useEffect(() => {
+    if (!data) return;
+    syncSelectionFromData(data, setSelectedKnowledgeId, setSelectedFolder);
+  }, [data]);
+
+  const checkNewPendingServices = useCallback(async () => {
+    if (!onNewPendingServices) return;
     try {
-      const nextFolders = await fetchKnowledgeFolders(organizationId);
-      const rawKnowledge = await fetchKnowledgeSources(organizationId);
-      const nextKnowledge = rawKnowledge.map((source) => ({
-        ...source,
-        folder:
-          nextFolders.find((folder) => folder.id === source.folderId)?.name ??
-          (source.folderId ? "알 수 없는 폴더" : "기본 폴더"),
+      const pending = await fetchPendingServices(organizationId);
+      if (pending.length > 0) onNewPendingServices(pending.length);
+    } catch {
+      // 확인 실패 시 무시
+    }
+  }, [organizationId, onNewPendingServices]);
+
+  useEffect(() => {
+    const indexingIds = knowledge
+      .filter((source) => INDEXING_STATUSES.includes(source.rawStatus ?? ""))
+      .map((source) => source.id);
+
+    if (indexingIds.length === 0) return;
+
+    const timer = setInterval(async () => {
+      const updated = await Promise.all(
+        indexingIds.map((id) => fetchKnowledgeSource(organizationId, id)),
+      );
+      await patchKnowledgeCache(mutate, (current) => ({
+        ...current,
+        knowledge: current.knowledge.map((source) => {
+          const fresh = updated.find((item) => item?.id === source.id);
+          if (!fresh) return source;
+          return {
+            ...source,
+            ...fresh,
+            folder: source.folder,
+          };
+        }),
       }));
-      setKnowledgeFolders(nextFolders);
-      setKnowledge(nextKnowledge);
-      setSelectedKnowledgeId((current) => {
-        if (nextKnowledge.length === 0) return "";
-        return nextKnowledge.some((source) => source.id === current) ? current : nextKnowledge[0].id;
-      });
-      setSelectedFolder((current) => {
-        const folderIds = [
-          ...nextFolders.map((folder) => folder.id),
-          ...(nextKnowledge.some((source) => !source.folderId) ? [UNFILED_FOLDER_ID] : []),
-        ];
-        return current && folderIds.includes(current) ? current : null;
-      });
-    } catch (error) {
-      setKnowledgeError(error instanceof Error ? error.message : "Knowledge API 조회 실패");
-    } finally {
-      setIsKnowledgeLoading(false);
-    }
-  }, [organizationId]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadKnowledge() {
-      if (isMounted) await reloadKnowledge();
-    }
-
-    loadKnowledge();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [reloadKnowledge]);
-
-  // processing/chunking/embedding 상태인 항목이 있으면 3초마다 상태 갱신
-  useEffect(() => {
-    const hasIndexing = knowledge.some((source) => INDEXING_STATUSES.includes(source.rawStatus ?? ""));
-    if (!hasIndexing) return;
-
-    const timer = setInterval(() => {
-      reloadKnowledge();
     }, 3000);
 
     return () => clearInterval(timer);
-  }, [knowledge, reloadKnowledge]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadChunks() {
-      if (!selectedKnowledgeId) return;
-      setIsKnowledgeChunksLoading(true);
-
-      try {
-        const chunks = await fetchKnowledgeChunks(organizationId, selectedKnowledgeId);
-        if (isMounted) setKnowledgeChunks(chunks);
-      } catch {
-        if (isMounted) setKnowledgeChunks([]);
-      } finally {
-        if (isMounted) setIsKnowledgeChunksLoading(false);
-      }
-    }
-
-    loadChunks();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [organizationId, selectedKnowledgeId]);
+  }, [knowledge, mutate, organizationId]);
 
   const handleCreateKnowledge = async (input: { title: string; content: string }) => {
     setIsKnowledgeMutating(true);
-    setKnowledgeError(null);
+    setMutationError(null);
     try {
       await createKnowledgeSource({
         organizationId,
@@ -129,9 +141,10 @@ export function useKnowledgeWorkspace(organizationId: string) {
         content: input.content,
         folderId: selectedFolder === UNFILED_FOLDER_ID ? null : selectedFolder,
       });
-      await reloadKnowledge();
+      await mutate();
+      void checkNewPendingServices();
     } catch (error) {
-      setKnowledgeError(error instanceof Error ? error.message : "지식 추가 실패");
+      setMutationError(toErrorMessage(error, "지식 추가 실패"));
       throw error;
     } finally {
       setIsKnowledgeMutating(false);
@@ -140,7 +153,7 @@ export function useKnowledgeWorkspace(organizationId: string) {
 
   const handleUploadKnowledge = async (file: File) => {
     setIsKnowledgeMutating(true);
-    setKnowledgeError(null);
+    setMutationError(null);
     try {
       const result = await uploadKnowledgeSource({
         organizationId,
@@ -149,50 +162,57 @@ export function useKnowledgeWorkspace(organizationId: string) {
       });
       if (result.source_id) {
         setSelectedKnowledgeId(result.source_id);
+        await mutate();
       }
     } catch (error) {
-      setKnowledgeError(error instanceof Error ? error.message : "지식 업로드 실패");
+      setMutationError(toErrorMessage(error, "지식 업로드 실패"));
     } finally {
       setIsKnowledgeMutating(false);
-      await reloadKnowledge();
+      void checkNewPendingServices();
     }
   };
 
   const handleUpdateKnowledge = async (
     sourceId: string,
-    data: { title?: string; is_referenced?: boolean; status?: string },
+    payload: { title?: string; is_referenced?: boolean; status?: string },
   ) => {
-    const previousKnowledge = knowledge;
+    const previousData = data;
     setIsKnowledgeMutating(true);
-    setKnowledgeError(null);
-    setKnowledge((current) =>
-      current.map((source) => {
+    setMutationError(null);
+
+    await patchKnowledgeCache(mutate, (current) => ({
+      ...current,
+      knowledge: current.knowledge.map((source) => {
         if (source.id !== sourceId) return source;
 
         const nextStatus =
-          typeof data.is_referenced === "boolean"
-            ? data.is_referenced
+          typeof payload.is_referenced === "boolean"
+            ? payload.is_referenced
               ? "참조중"
               : "미참조"
-            : data.status
-              ? mapKnowledgeStatus(data.status, source.status !== "미참조")
+            : payload.status
+              ? mapKnowledgeStatus(payload.status, source.status !== "미참조")
               : source.status;
 
         return {
           ...source,
-          title: data.title ?? source.title,
+          title: payload.title ?? source.title,
           status: nextStatus,
-          rawStatus: data.status ?? source.rawStatus,
+          rawStatus: payload.status ?? source.rawStatus,
         };
       }),
-    );
+    }));
 
     try {
-      await updateKnowledgeSource({ organizationId, sourceId, data });
-      await reloadKnowledge();
+      await updateKnowledgeSource({ organizationId, sourceId, data: payload });
+      await mutate();
     } catch (error) {
-      setKnowledge(previousKnowledge);
-      setKnowledgeError(error instanceof Error ? error.message : "지식 수정 실패");
+      if (previousData) {
+        await mutate(previousData, { revalidate: false });
+      } else {
+        await mutate();
+      }
+      setMutationError(toErrorMessage(error, "지식 수정 실패"));
       throw error;
     } finally {
       setIsKnowledgeMutating(false);
@@ -201,13 +221,13 @@ export function useKnowledgeWorkspace(organizationId: string) {
 
   const handleDeleteKnowledge = async (sourceId: string) => {
     setIsKnowledgeMutating(true);
-    setKnowledgeError(null);
+    setMutationError(null);
     try {
       await deleteKnowledgeSource({ organizationId, sourceId });
       setSelectedKnowledgeId((current) => (current === sourceId ? "" : current));
-      await reloadKnowledge();
+      await mutate();
     } catch (error) {
-      setKnowledgeError(error instanceof Error ? error.message : "지식 삭제 실패");
+      setMutationError(toErrorMessage(error, "지식 삭제 실패"));
       throw error;
     } finally {
       setIsKnowledgeMutating(false);
@@ -216,81 +236,118 @@ export function useKnowledgeWorkspace(organizationId: string) {
 
   const handleUpdateChunk = async (chunkId: string, content: string) => {
     await updateKnowledgeChunk({ organizationId, chunkId, content });
-    setKnowledgeChunks((current) => current.map((chunk) => (chunk.id === chunkId ? { ...chunk, content } : chunk)));
+    await mutateChunks(
+      (current) => current?.map((chunk) => (chunk.id === chunkId ? { ...chunk, content } : chunk)),
+      { revalidate: false },
+    );
   };
 
   const handleDeleteChunk = async (chunkId: string) => {
     await deleteKnowledgeChunk({ organizationId, chunkId });
-    setKnowledgeChunks((current) => current.filter((chunk) => chunk.id !== chunkId));
+    await mutateChunks((current) => current?.filter((chunk) => chunk.id !== chunkId), { revalidate: false });
   };
 
-  // TODO: 백엔드 PATCH /knowledge/{id}가 content를 아직 지원하지 않음 — 지원되면 실제 저장 + 재인덱싱 호출로 교체
+  const handleToggleFolderActive = async (folderId: string, isActive: boolean) => {
+    await patchKnowledgeCache(mutate, (current) => ({
+      ...current,
+      knowledgeFolders: current.knowledgeFolders.map((folder) =>
+        folder.id === folderId ? { ...folder, isActive } : folder,
+      ),
+    }));
+
+    try {
+      await updateKnowledgeFolder({ organizationId, folderId, data: { isActive } });
+    } catch (error) {
+      await patchKnowledgeCache(mutate, (current) => ({
+        ...current,
+        knowledgeFolders: current.knowledgeFolders.map((folder) =>
+          folder.id === folderId ? { ...folder, isActive: !isActive } : folder,
+        ),
+      }));
+      setMutationError(toErrorMessage(error, "폴더 상태 변경 실패"));
+    }
+  };
+
   const handleUpdateKnowledgeContent = async () => {
     throw new Error("본문 내용 수정은 아직 지원되지 않습니다.");
   };
 
   const handleReindexKnowledge = async (sourceId: string) => {
-    setKnowledge((current) =>
-      current.map((s) => (s.id === sourceId ? { ...s, status: "인덱싱중", rawStatus: "indexing" } : s)),
-    );
+    await patchKnowledgeCache(mutate, (current) => ({
+      ...current,
+      knowledge: current.knowledge.map((source) =>
+        source.id === sourceId ? { ...source, status: "인덱싱중", rawStatus: "indexing" } : source,
+      ),
+    }));
+
     try {
       await reindexKnowledgeSource({ organizationId, sourceId });
-      await reloadKnowledge();
+      await mutate();
       if (selectedKnowledgeId === sourceId) {
-        const chunks = await fetchKnowledgeChunks(organizationId, sourceId);
-        setKnowledgeChunks(chunks);
+        await mutateChunks();
       }
-    } catch (e) {
-      setKnowledgeError(e instanceof Error ? e.message : "재인덱싱에 실패했습니다.");
-      await reloadKnowledge();
+    } catch (error) {
+      setMutationError(toErrorMessage(error, "재인덱싱에 실패했습니다."));
+      await mutate();
     }
   };
 
-  const handleCreateFolder = async (input: { name: string; description?: string | null }) => {
-    setKnowledgeError(null);
+  const handleCreateFolder = async (input: { name: string; description?: string | null; parentId?: string | null }) => {
+    setMutationError(null);
     const created = await createKnowledgeFolder({
       organizationId,
       name: input.name,
       description: input.description,
+      parentId: input.parentId,
     });
-    setKnowledgeFolders((current) => [...current, created]);
+    await patchKnowledgeCache(mutate, (current) => ({
+      ...current,
+      knowledgeFolders: [created, ...current.knowledgeFolders],
+    }));
     setSelectedFolder(created.id);
-    await reloadKnowledge();
+    await mutate();
   };
 
-  const handleRenameFolder = async (folderId: string, input: { name: string; description?: string | null }) => {
+  const handleRenameFolder = async (
+    folderId: string,
+    input: { name: string; description?: string | null; parentId?: string | null },
+  ) => {
     if (folderId === UNFILED_FOLDER_ID) return;
-    setKnowledgeError(null);
+    setMutationError(null);
     const updated = await updateKnowledgeFolder({
       organizationId,
       folderId,
-      data: { name: input.name, description: input.description },
+      data: { name: input.name, description: input.description, parentId: input.parentId },
     });
-    setKnowledgeFolders((current) => current.map((folder) => (folder.id === folderId ? updated : folder)));
-    setKnowledge((current) =>
-      current.map((source) => (source.folderId === folderId ? { ...source, folder: updated.name } : source)),
-    );
+    await patchKnowledgeCache(mutate, (current) => ({
+      ...current,
+      knowledgeFolders: current.knowledgeFolders.map((folder) => (folder.id === folderId ? updated : folder)),
+      knowledge: current.knowledge.map((source) =>
+        source.folderId === folderId ? { ...source, folder: updated.name } : source,
+      ),
+    }));
   };
 
   const handleDeleteFolder = async (folderId: string) => {
     if (folderId === UNFILED_FOLDER_ID) return;
-    setKnowledgeError(null);
+    setMutationError(null);
     await deleteKnowledgeFolder({ organizationId, folderId });
-    setKnowledgeFolders((current) => current.filter((folder) => folder.id !== folderId));
-    setKnowledge((current) =>
-      current.map((source) =>
+    await patchKnowledgeCache(mutate, (current) => ({
+      ...current,
+      knowledgeFolders: current.knowledgeFolders.filter((folder) => folder.id !== folderId),
+      knowledge: current.knowledge.map((source) =>
         source.folderId === folderId ? { ...source, folderId: undefined, folder: "기본 폴더" } : source,
       ),
-    );
+    }));
     setSelectedFolder((current) => (current === folderId ? UNFILED_FOLDER_ID : current));
-    await reloadKnowledge();
+    await mutate();
   };
 
   return {
     knowledge,
     knowledgeFolders,
     knowledgeChunks,
-    isKnowledgeLoading,
+    isKnowledgeLoading: isLoading,
     isKnowledgeChunksLoading,
     knowledgeError,
     selectedKnowledgeId,
@@ -305,6 +362,7 @@ export function useKnowledgeWorkspace(organizationId: string) {
     handleCreateKnowledge,
     handleUploadKnowledge,
     handleUpdateKnowledge,
+    handleToggleFolderActive,
     handleDeleteKnowledge,
     handleUpdateChunk,
     handleDeleteChunk,

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { SWRConfig } from "swr";
 import { AiCosSectionRail, AiCosSectionSidebar } from "../../../components/admin/ai";
 import type { AiCosSection } from "../../../components/admin/ai/types";
 
@@ -26,20 +27,29 @@ function getActiveSection(pathname: string): AiCosSection {
 export default function AdminAiLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const activeSection = getActiveSection(pathname);
-  const sectionsWithSidebar: AiCosSection[] = ["knowledge", "logs"];
+  const sectionsWithSidebar: AiCosSection[] = ["logs"];
 
   const gridTemplateColumns = sectionsWithSidebar.includes(activeSection)
     ? "76px 240px 280px minmax(520px,1fr) 360px"
     : "76px 240px minmax(720px,1fr) 360px";
 
   return (
-    <div
-      className="grid h-[calc(100vh-70px)] min-h-0 gap-2 overflow-hidden px-2 pb-2"
-      style={{ gridTemplateColumns }}
+    <SWRConfig
+      value={{
+        revalidateOnFocus: true,
+        revalidateOnReconnect: true,
+        dedupingInterval: 3_000,
+        keepPreviousData: true,
+      }}
     >
-      <AiCosSectionRail activeSection={activeSection} />
-      <AiCosSectionSidebar activeSection={activeSection} />
-      {children}
-    </div>
+      <div
+        className="grid h-[calc(100vh-70px)] min-h-0 gap-2 overflow-hidden px-2 pb-2"
+        style={{ gridTemplateColumns }}
+      >
+        <AiCosSectionRail activeSection={activeSection} />
+        <AiCosSectionSidebar activeSection={activeSection} />
+        {children}
+      </div>
+    </SWRConfig>
   );
 }

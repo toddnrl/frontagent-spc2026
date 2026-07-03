@@ -48,11 +48,13 @@ import {
   SectionHeading,
   StatusPill,
   TimelineItem,
-} from "../ui/DashboardUI";
-import { Avatar } from "../ui/Avatar";
-import { ActivityDivider, AgentMessage } from "../ui/ChatBubbles";
-import { Button, Modal, ModalActions, Toggle } from "../ui";
-import { TabRow } from "../ui/TabRow";
+} from "@/components/ui/DashboardUI";
+import { Avatar } from "@/components/ui/Avatar";
+import { ActivityDivider, AgentMessage } from "@/components/ui/ChatBubbles";
+import { Modal, ModalActions } from "@/components/ui/Modal";
+import { TabRow } from "@/components/ui/TabRow";
+import { Button } from "@/components/ui/Button";
+import { Toggle } from "@/components/ui/Toggle";
 import {
   cancelReservation,
   approveService,

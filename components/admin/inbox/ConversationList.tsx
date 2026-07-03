@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 import { getOrganizationId } from "../../../lib/organization";
 import { conversations as mockConversations, teamMembers } from "../data";
-import { Avatar } from "../ui/Avatar";
-import { TabRow } from "../ui/TabRow";
+import { Avatar } from "@/components/ui/Avatar";
+import { TabRow } from "@/components/ui/TabRow";
 import type { Conversation } from "../types";
 import { fetchConversations } from "./conversationsApi";
 

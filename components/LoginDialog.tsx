@@ -45,7 +45,7 @@ export function LoginDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={onClose} tone="marketing" showCloseButton>
       <div className="flex flex-col items-center text-center">
         <h2 className="m-0 text-[26px] font-extrabold text-[#16191f]">
           Call bee 시작하기
@@ -57,7 +57,7 @@ export function LoginDialog({
         <Button
           variant="outline"
           size="lg"
-          className="w-full"
+          className="w-full px-5 py-3.5 text-[15px]"
           disabled={loading || !isSupabaseReady}
           onClick={handleGoogleLogin}
         >

@@ -60,6 +60,10 @@ export async function fetchOrganizationAiSettings(organizationId: string) {
   return readAgentApiJson<OrganizationAiSettingsResponse>(response);
 }
 
+export function getAgentSettingsKey(organizationId: string) {
+  return ["agent-settings", organizationId] as const;
+}
+
 export async function updateOrganizationAiSettings(
   organizationId: string,
   form: OrganizationAiSettingsForm,

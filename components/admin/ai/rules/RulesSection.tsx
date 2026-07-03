@@ -3,7 +3,11 @@
 import { AlertTriangle, ChevronDown, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
-import { Button, Card, Modal, ModalActions, PageHeader, SectionTitle, Toggle } from "../../ui";
+import { Modal, ModalActions } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { PageHeader, SectionTitle } from "@/components/ui/PageHeader";
+import { Toggle } from "@/components/ui/Toggle";
 import type { RuleCreateInput, RuleItem, RuleUpdateInput } from "../types";
 
 // 규칙은 응답 생성 시 매번 전체가 LLM 프롬프트에 그대로 주입된다.

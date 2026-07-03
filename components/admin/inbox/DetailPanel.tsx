@@ -1,7 +1,7 @@
 import { ChevronDown, PanelRight } from "lucide-react";
 import type { Conversation } from "../types";
-import { Avatar } from "../ui/Avatar";
-import { DetailRows, DetailSection } from "../ui/DetailInfo";
+import { Avatar } from "@/components/ui/Avatar";
+import { DetailRows, DetailSection } from "@/components/ui/DetailInfo";
 
 export function DetailPanel({ conversation }: { conversation: Conversation }) {
   return (

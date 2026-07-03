@@ -1,5 +1,7 @@
 import { CheckCircle2, FileText, Zap } from "lucide-react";
-import { Card, SectionTitle, Toggle } from "../../ui";
+import { Card } from "@/components/ui/Card";
+import { SectionTitle } from "@/components/ui/PageHeader";
+import { Toggle } from "@/components/ui/Toggle";
 import { SettingsInput, SettingsSelect } from "./SettingsFields";
 import { llmModelOptions, providerOptions, type OrganizationAiSettings } from "./types";
 import type { SettingsWorkspaceState } from "./useSettingsWorkspace";

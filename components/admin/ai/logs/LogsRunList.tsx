@@ -1,5 +1,5 @@
 import type { UIEvent } from "react";
-import { StatusBadge } from "../../ui";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { AgentRun } from "../types";
 import { formatLogTimestamp, logsChannelLabel, logsStatusLabel } from "./logsUtils";
 

@@ -20,6 +20,7 @@ export function TasksWorkspace({ organizationId, user }: { organizationId: strin
         }
       >
         <TasksSection
+          organizationId={organizationId}
           taskFlows={workspace.taskFlows}
           taskNodesByFlowId={workspace.taskNodesByFlowId}
           taskEdgesByFlowId={workspace.taskEdgesByFlowId}
@@ -29,13 +30,12 @@ export function TasksWorkspace({ organizationId, user }: { organizationId: strin
           testResults={workspace.taskTestResults}
           onCreate={workspace.handleCreateTaskFlow}
           onUpdate={workspace.handleUpdateTaskFlow}
+          onSaveDraft={workspace.handleSaveTaskFlowDraft}
           onDelete={workspace.handleDeleteTaskFlow}
           onTest={workspace.handleTestTaskFlow}
-          onCreateNode={workspace.handleCreateTaskNode}
-          onUpdateNode={workspace.handleUpdateTaskNode}
-          onDeleteNode={workspace.handleDeleteTaskNode}
           onUpsertEdge={workspace.handleUpsertTaskEdge}
           onClearEdges={workspace.handleClearTaskEdges}
+          onRefresh={workspace.refreshTasks}
           onBuilderOpenChange={setIsBuilderOpen}
         />
       </div>

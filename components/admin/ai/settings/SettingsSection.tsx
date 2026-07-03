@@ -1,5 +1,5 @@
 import { RefreshCw, Save } from "lucide-react";
-import { PageHeader } from "../../ui";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   LlmSettingsCard,
   RecommendedTemplatesCard,

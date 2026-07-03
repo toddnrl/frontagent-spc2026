@@ -1,32 +1,39 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-const baseClass =
-  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl text-[15px] font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60'
+const buttonVariantClasses = {
+  primary: "bg-[#3182F6] text-white hover:bg-[#1b64da]",
+  dark: "bg-black text-white hover:bg-gray-800",
+  secondary: "bg-[#f2f2f2] text-gray-600",
+  danger: "bg-red-50 text-red-500",
+  ghost: "border border-gray-200 bg-white text-gray-900",
+  outline: "border border-[#d8dce3] bg-white text-[#16191f] hover:bg-[#f5f7fa]",
+} as const;
 
-const variantClass = {
-  primary: 'border-0 bg-[var(--blue)] text-white hover:bg-[#2a5fd8]',
-  outline:
-    'border border-[#d8dce3] bg-white text-[#16191f] hover:bg-[#f5f7fa]',
-} as const
-
-const sizeClass = {
-  md: 'px-4 py-3',
-  lg: 'px-5 py-3.5',
-} as const
+const buttonSizeClasses = {
+  sm: "px-3 py-1.5 text-[12px]",
+  md: "px-3.5 py-2 text-[13px]",
+  lg: "px-4 py-2 text-[13px]",
+} as const;
 
 export function Button({
-  variant = 'primary',
-  size = 'md',
-  className = '',
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: keyof typeof variantClass
-  size?: keyof typeof sizeClass
-}) {
+  variant = "secondary",
+  size = "md",
+  className = "",
+  children,
+  ...rest
+}: {
+  variant?: keyof typeof buttonVariantClasses;
+  size?: keyof typeof buttonSizeClasses;
+  children: ReactNode;
+} & ButtonHTMLAttributes<HTMLButtonElement>) {
+  const shapeClass = variant === "outline" ? "rounded-xl font-semibold" : "rounded-full";
+
   return (
     <button
-      className={`${baseClass} ${variantClass[variant]} ${sizeClass[size]} ${className}`}
-      {...props}
-    />
-  )
+      className={`inline-flex items-center justify-center gap-2 font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${shapeClass} ${buttonVariantClasses[variant]} ${buttonSizeClasses[size]} ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
 }

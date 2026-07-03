@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import type { Key } from "react";
 import { useMemo, useState } from "react";
-import { Button, Modal, ModalActions, TabRow, Toggle } from "../../ui";
+import { Modal, ModalActions } from "@/components/ui/Modal";
+import { TabRow } from "@/components/ui/TabRow";
+import { Button } from "@/components/ui/Button";
+import { Toggle } from "@/components/ui/Toggle";
 import type { KnowledgeChunk, KnowledgeSource } from "../types";
 
 type SortKey = "title" | "type" | "referenceCount" | "resolutionRate" | "updatedAt";

@@ -40,6 +40,10 @@ export async function fetchRules(organizationId: string) {
   return (payload.items ?? []).map(mapRuleRecord);
 }
 
+export function getRulesWorkspaceKey(organizationId: string) {
+  return ["rules-workspace", organizationId] as const;
+}
+
 export async function createRule({ organizationId, data }: { organizationId: string; data: RuleCreateInput }) {
   const response = await fetch(`${getAgentApiBaseUrl()}/rules`, {
     method: "POST",

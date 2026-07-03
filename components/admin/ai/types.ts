@@ -34,6 +34,8 @@ export type KnowledgeFolder = {
   organizationId: string;
   name: string;
   description?: string;
+  parentId?: string | null;
+  isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -153,6 +155,55 @@ export type TaskNodeUpdateInput = Partial<TaskNodeCreateInput> & {
   code?: string | null;
   timeout_seconds?: number;
   retry_limit?: number;
+};
+
+export type TaskFlowTemplate = {
+  templateKey: string;
+  name: string;
+  description: string;
+  triggerIntent: string;
+  triggerDescription: string;
+  triggerExamples: string[];
+  nodeCount: number;
+  edgeCount: number;
+};
+
+export type TaskFlowGenerateItemResult = {
+  templateKey: string;
+  flowId: string;
+  name: string;
+  triggerIntent: string;
+  nodeCount: number;
+  edgeCount: number;
+  created: boolean;
+  skipped: boolean;
+  skipReason: string | null;
+};
+
+export type TaskFlowGenerateResponse = {
+  organizationId: string;
+  template: string;
+  createdCount: number;
+  skippedCount: number;
+  items: TaskFlowGenerateItemResult[];
+};
+
+export type TaskFlowBriefPlan = {
+  templateKey: string;
+  name: string;
+  description: string;
+  triggerDescription: string;
+  triggerExamples: string[];
+  allowedChannels: string[];
+  requiredSlots: string[];
+  assistantToneHint?: string;
+  reasoning?: string;
+};
+
+export type TaskFlowGenerateFromBriefResponse = {
+  organizationId: string;
+  plan: TaskFlowBriefPlan;
+  result: TaskFlowGenerateItemResult;
 };
 
 export type ConversationMessage = {

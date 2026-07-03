@@ -1,6 +1,7 @@
 import { ChevronDown, Plus } from "lucide-react";
 import type { ReactNode } from "react";
-import { Button } from "../../ui";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import type { NextStepMode } from "./nodeHelpers";
 
 export function PanelSection({
@@ -93,25 +94,15 @@ export function PanelInlineSelect({
   placeholder?: string;
 }) {
   return (
-    <label className="block rounded-[14px] bg-[#f7f7f7] px-4 py-3">
-      <span className="mb-1 block text-[11px] font-extrabold text-gray-400">{label}</span>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="w-full appearance-none bg-transparent pr-8 text-[14px] font-bold text-gray-800 outline-none disabled:text-gray-400"
-          disabled={options.length === 0}
-        >
-          <option value="">{options.length === 0 ? "연결 가능한 노드 없음" : (placeholder ?? "선택")}</option>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-      </div>
-    </label>
+    <Select
+      boxed
+      label={label}
+      value={value}
+      onChange={onChange}
+      options={options}
+      placeholder={options.length === 0 ? "연결 가능한 노드 없음" : (placeholder ?? "선택")}
+      disabled={options.length === 0}
+    />
   );
 }
 
@@ -134,26 +125,19 @@ export function NextStepModePicker({
   const selected = options.find((option) => option.value === value) ?? options[0];
 
   return (
-    <label className="block rounded-[16px] bg-[#f7f7f7] px-4 py-3">
-      <span className="mb-1 block text-[11px] font-extrabold text-gray-400">이동 방식</span>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(event) => onChange(event.target.value as NextStepMode)}
-          className="w-full appearance-none bg-transparent pr-8 text-[14px] font-extrabold text-gray-900 outline-none"
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-      </div>
-      <div className="mt-2 text-[12px] font-bold leading-relaxed text-gray-400">
+    <div>
+      <Select
+        boxed
+        label="이동 방식"
+        value={value}
+        onChange={(nextValue) => onChange(nextValue as NextStepMode)}
+        options={options.map((option) => ({ value: option.value, label: option.label }))}
+        className="rounded-[16px]"
+      />
+      <div className="mt-2 px-1 text-[12px] font-bold leading-relaxed text-gray-400">
         {selected.description}
       </div>
-    </label>
+    </div>
   );
 }
 
@@ -216,6 +200,11 @@ export function PageHeader({
   actionVariant = "secondary",
   actionDisabled = false,
   actionIcon = <Plus className="h-4 w-4" />,
+  secondaryAction,
+  onSecondaryAction,
+  secondaryActionVariant = "primary",
+  secondaryActionDisabled = false,
+  secondaryActionIcon,
 }: {
   title: string;
   description: string;
@@ -224,6 +213,11 @@ export function PageHeader({
   actionVariant?: "primary" | "secondary";
   actionDisabled?: boolean;
   actionIcon?: ReactNode;
+  secondaryAction?: string;
+  onSecondaryAction?: () => void;
+  secondaryActionVariant?: "primary" | "secondary" | "dark";
+  secondaryActionDisabled?: boolean;
+  secondaryActionIcon?: ReactNode;
 }) {
   return (
     <div className="mb-7 flex items-start justify-between gap-4">
@@ -231,10 +225,23 @@ export function PageHeader({
         <h1 className="text-[30px] font-bold">{title}</h1>
         <p className="mt-2 text-[15px] font-medium text-gray-500">{description}</p>
       </div>
-      <Button variant={actionVariant} size="lg" onClick={onAction} disabled={actionDisabled}>
-        {actionIcon}
-        {action}
-      </Button>
+      <div className="flex shrink-0 items-center gap-2">
+        {secondaryAction && onSecondaryAction && (
+          <Button
+            variant={secondaryActionVariant}
+            size="lg"
+            onClick={onSecondaryAction}
+            disabled={secondaryActionDisabled}
+          >
+            {secondaryActionIcon}
+            {secondaryAction}
+          </Button>
+        )}
+        <Button variant={actionVariant} size="lg" onClick={onAction} disabled={actionDisabled}>
+          {actionIcon}
+          {action}
+        </Button>
+      </div>
     </div>
   );
 }

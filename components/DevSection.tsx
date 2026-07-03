@@ -27,7 +27,7 @@ export default function DevSection() {
         </p>
       </div>
       <div className={devWrapClass}>
-        <div className="mt-12 grid grid-cols-[repeat(3,minmax(0,400px))] justify-center gap-9 max-[900px]:grid-cols-1 max-[900px]:gap-3.5">
+        <div className="mt-12 grid grid-cols-[repeat(3,minmax(0,400px))] justify-center gap-9 max-[900px]:grid-cols-1 max-[900px]:gap-3.5 max-[900px]:justify-items-center">
 
           <div className={devCardClass}>
             <div className={devIconClass} style={{ background: 'rgba(124,156,255,.14)' }}>
