@@ -194,9 +194,25 @@ export function FloatingButton() {
 
   return (
     <LayoutGroup id="floating-widget">
+      {/* 모바일 전체화면 패널 — transform 부모 바깥에서 fixed inset-0 적용 */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="floating-panel-mobile"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="pointer-events-auto fixed inset-0 z-[150] overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:hidden"
+          >
+            {renderPanelBody()}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div
         ref={containerRef}
-        className={`pointer-events-none fixed bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center sm:bottom-8 ${isOpen ? "z-[150]" : "z-50"}`}
+        className={`pointer-events-none fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center sm:bottom-8 ${isOpen ? "z-[150]" : "z-50"}`}
       >
         <AnimatePresence initial={false} mode="sync">
           {isOpen ? (
@@ -207,8 +223,8 @@ export function FloatingButton() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0.96 }}
               transition={surfaceTransition}
-              style={{ transformOrigin: "bottom center" }}
-              className="pointer-events-auto fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:relative sm:inset-auto sm:h-[580px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
+              style={{ transformOrigin: "bottom right" }}
+              className="pointer-events-auto relative hidden overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:block sm:h-[580px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
             >
               {renderPanelBody()}
             </motion.div>
