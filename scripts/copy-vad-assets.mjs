@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync } from "fs";
+import { copyFileSync, mkdirSync, existsSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
@@ -9,8 +9,21 @@ const dest = resolve(__dirname, "../public/vad");
 
 mkdirSync(dest, { recursive: true });
 
-const vadBase = dirname(require.resolve("@ricky0123/vad-web/package.json"));
-const ortBase = dirname(require.resolve("onnxruntime-web/package.json"));
+function resolvePackageDir(pkg) {
+  try {
+    return dirname(require.resolve(`${pkg}/package.json`));
+  } catch {
+    return null;
+  }
+}
+
+const vadBase = resolvePackageDir("@ricky0123/vad-web");
+const ortBase = resolvePackageDir("onnxruntime-web");
+
+if (!vadBase || !ortBase) {
+  console.log("VAD packages not found — skipping copy-vad-assets");
+  process.exit(0);
+}
 
 const files = [
   [resolve(vadBase, "dist/silero_vad_v5.onnx"), "silero_vad_v5.onnx"],
@@ -25,9 +38,13 @@ const files = [
 
 for (const [src, name] of files) {
   try {
-    copyFileSync(src, resolve(dest, name));
-    console.log(`✓ ${name}`);
-  } catch {
-    console.warn(`⚠ skip ${name} (not found)`);
+    if (existsSync(src)) {
+      copyFileSync(src, resolve(dest, name));
+      console.log(`✓ ${name}`);
+    } else {
+      console.warn(`⚠ skip ${name} (not found)`);
+    }
+  } catch (e) {
+    console.warn(`⚠ skip ${name}: ${e.message}`);
   }
 }

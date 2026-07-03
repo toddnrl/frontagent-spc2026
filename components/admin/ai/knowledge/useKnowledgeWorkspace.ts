@@ -237,7 +237,7 @@ export function useKnowledgeWorkspace(organizationId: string) {
       await reindexKnowledgeSource({ organizationId, sourceId });
       await reloadKnowledge();
       if (selectedKnowledgeId === sourceId) {
-        const chunks = await fetchKnowledgeChunks({ organizationId, sourceId });
+        const chunks = await fetchKnowledgeChunks(organizationId, sourceId);
         setKnowledgeChunks(chunks);
       }
     } catch (e) {
