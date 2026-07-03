@@ -2029,8 +2029,8 @@ export function CallTab({
       ) : null}
 
       <div className="relative flex min-h-0 flex-1 flex-col">
-        {/* 오브 + 상태 — 항상 하단 고정 */}
-        <div className="flex flex-col items-center justify-center px-2 py-4">
+        {/* 오브 + 상태 */}
+        <div className="flex flex-1 flex-col items-center justify-center px-2 py-4">
           <motion.div
             layoutId={enableSharedLayout ? "floating-call-orb" : undefined}
             animate={{ width: hasVoiceMessages ? 160 : 224, height: hasVoiceMessages ? 160 : 224 }}
