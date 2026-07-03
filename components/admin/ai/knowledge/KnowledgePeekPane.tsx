@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, BookOpen, Check, Info, Layers, Trash2, X } from "lucide-react";
+import { Activity, BookOpen, Check, Info, Layers, RefreshCw, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { PanelSection } from "../../ui";
 import type { KnowledgeChunk, KnowledgeSource } from "../types";
@@ -16,6 +16,7 @@ export function KnowledgePeekPane({
   onUpdateChunk,
   onDeleteChunk,
   onUpdateContent,
+  onReindex,
 }: {
   source: KnowledgeSource;
   chunks: KnowledgeChunk[];
@@ -24,12 +25,25 @@ export function KnowledgePeekPane({
   onUpdateChunk?: (chunkId: string, content: string) => Promise<void>;
   onDeleteChunk?: (chunkId: string) => Promise<void>;
   onUpdateContent?: (sourceId: string, content: string) => Promise<void>;
+  onReindex?: (sourceId: string) => Promise<void>;
 }) {
   const maxHits = Math.max(...chunks.map((c) => (c.metadata?.hit_count as number | undefined) ?? 0), 1);
   const [selectedChunkId, setSelectedChunkId] = useState<string | null>(chunks[0]?.id ?? null);
+  const [isReindexing, setIsReindexing] = useState(false);
 
   const selectedChunk = chunks.find((chunk) => chunk.id === selectedChunkId) ?? chunks[0] ?? null;
   const isTextSource = source.sourceType === "text";
+  const isIndexing = source.rawStatus === "indexing" || source.status === "인덱싱중";
+
+  const handleReindex = async () => {
+    if (!onReindex || isReindexing || isIndexing) return;
+    setIsReindexing(true);
+    try {
+      await onReindex(source.id);
+    } finally {
+      setIsReindexing(false);
+    }
+  };
 
   return (
     <aside className="fixed inset-y-0 right-0 z-50 flex w-[560px] flex-col border-l border-gray-200 bg-white shadow-[-18px_0_44px_rgba(15,23,42,0.12)]">
@@ -81,6 +95,20 @@ export function KnowledgePeekPane({
             {source.createdAt && <PeekInfoRow label="생성일" value={source.createdAt} />}
           </div>
         </PanelSection>
+
+        {onReindex && (
+          <div className="border-b border-gray-100 px-5 py-3">
+            <button
+              type="button"
+              onClick={handleReindex}
+              disabled={isReindexing || isIndexing}
+              className="flex items-center gap-2 rounded-[10px] border border-gray-200 bg-gray-50 px-3 py-2 text-[12px] font-bold text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isReindexing || isIndexing ? "animate-spin" : ""}`} />
+              {isReindexing || isIndexing ? "재인덱싱 중..." : "재인덱싱"}
+            </button>
+          </div>
+        )}
 
         {isTextSource && onUpdateContent && (
           <TextContentSection source={source} chunks={chunks} onUpdateContent={onUpdateContent} />

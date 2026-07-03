@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { PaperAirplaneIcon, PhoneIcon } from "@heroicons/react/24/solid";
+import { PaperAirplaneIcon, PhoneIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { getEmbedOrganizationId } from "../../../lib/organization";
 import { getAgentApiBaseUrl } from "../../../lib/agentApiBase";
 import { clearActiveCallSession, loadActiveCallSession, saveCallSession } from "../../../lib/callSessionStorage";
@@ -19,17 +19,7 @@ const SPEAKING_EFFECT_MIN_MS = 700;
 // 전 prebuffer는 살리되, 무음이 무한정 누적돼 STT가 흔들리는 것을 막는다.
 const LISTENING_RECORDER_REFRESH_MS = 3000;
 const VAD_INTERVAL_MS = 80;
-// 잡음 오인식 방지: 0.035 → 0.05. 키보드/배경음 등 생활 소음이 0.03~0.04
-// 수준이라 그 이하로 잡으면 잡음을 발화로 처리한다.
-const VAD_START_THRESHOLD = 0.05;
-const VAD_STOP_THRESHOLD = 0.025;
-// 600ms → 400ms: 말 끝나고 빠르게 턴 종료해 응답 체감을 줄인다.
-const VAD_SILENCE_MS = 400;
-// 잡음 오인식 방지: 발화 판정 프레임을 2 → 4로 올린다(320ms 이상 지속된
-// 소리만 발화로 인정). 160ms 순간 잡음은 걸러지고 실제 말은 충분히 잡힌다.
-const VAD_START_MIN_FRAMES = 4;
-const BARGE_IN_START_THRESHOLD = 0.065;
-const BARGE_IN_MIN_FRAMES = 4;
+const VAD_SILENCE_MS = 500;
 const IDLE_WARNING_MS = 30000;
 const IDLE_END_AFTER_WARNING_MS = 15000;
 const FIRST_AUDIO_PRIME_DELAY_MS = 80;
@@ -47,6 +37,31 @@ export interface VoiceTraceEvent {
   items?: unknown[];
 }
 
+function float32ToWavBlob(samples: Float32Array, sampleRate: number): Blob {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const writeStr = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, "data");
+  view.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) {
+    view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, samples[i])) * 0x7fff, true);
+  }
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
 interface CallTabProps {
   organizationId?: string;
   sessionIdPrefix?: string;
@@ -54,6 +69,7 @@ interface CallTabProps {
   isTextMode?: boolean;
   enableSharedLayout?: boolean;
   onTextModeChange?: (enabled: boolean) => void;
+  onExitConversation?: () => void;
   onTrace?: (event: VoiceTraceEvent) => void;
   onCallDuration?: (label: string, seconds: number) => void;
   onConversationUpdate?: (payload: {
@@ -153,6 +169,7 @@ export function CallTab({
   isTextMode = false,
   enableSharedLayout = true,
   onTextModeChange,
+  onExitConversation,
   onTrace,
   onCallDuration,
   onConversationUpdate,
@@ -171,6 +188,8 @@ export function CallTab({
   const [hasMediaStream, setHasMediaStream] = useState(false);
   const callStatusRef = useRef<CallStatus>("idle");
   const isVoiceCallActiveRef = useRef(false);
+  const onCallDurationRef = useRef(onCallDuration);
+  useEffect(() => { onCallDurationRef.current = onCallDuration; }, [onCallDuration]);
   const callSecondsRef = useRef(0);
   const pipelineStatusRef = useRef<PipelineStatus>("idle");
   const speakingEffectVisibleRef = useRef(false);
@@ -208,6 +227,7 @@ export function CallTab({
   const speechTurnStartedAtRef = useRef(0);
   const speechFramesRef = useRef(0);
   const bargeInFramesRef = useRef(0);
+  const noiseFloorBufRef = useRef<number[]>([]);  // 최근 RMS 샘플 (listening 중에만 수집)
   const idleWarningTimerRef = useRef<number | null>(null);
   const idleEndTimerRef = useRef<number | null>(null);
   const idleWarningPlayedRef = useRef(false);
@@ -284,7 +304,6 @@ export function CallTab({
   }, [callSeconds]);
 
   const emitCallStartedTrace = () => {
-    onCallDuration?.("00:00", 0);
     onTrace?.({
       id: "voice_call_start",
       title: "통화 시작",
@@ -343,16 +362,15 @@ export function CallTab({
     if (!isVoiceCallActiveRef.current || callStatus !== "active") return;
 
     const interval = window.setInterval(() => {
-      let nextSeconds = 0;
       setCallSeconds((seconds) => {
-        nextSeconds = Math.min(seconds + 1, 59 * 60 + 59);
+        const nextSeconds = Math.min(seconds + 1, 59 * 60 + 59);
+        onCallDurationRef.current?.(formatCallDuration(nextSeconds), nextSeconds);
         return nextSeconds;
       });
-      onCallDuration?.(formatCallDuration(nextSeconds), nextSeconds);
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [callStatus, onCallDuration]);
+  }, [callStatus]);
 
   const clearPipelineIdleTimers = () => {
     if (idleWarningTimerRef.current !== null) window.clearTimeout(idleWarningTimerRef.current);
@@ -428,6 +446,7 @@ export function CallTab({
     silenceStartedAtRef.current = null;
     speechFramesRef.current = 0;
     bargeInFramesRef.current = 0;
+    noiseFloorBufRef.current = [];
     activeTurnAbortControllerRef.current?.abort();
     activeTurnAbortControllerRef.current = null;
     pipelineTurnIdRef.current += 1;
@@ -577,15 +596,20 @@ export function CallTab({
   const voiceTraceStepTitle = (step: string) => {
     const titles: Record<string, string> = {
       conversation: "대화 세션",
+      instruction: "지침 적용",
       decision: "의도 분석",
       intent: "의도 분석",
-      knowledge: "지식 확인",
+      knowledge: "지식 검색",
+      knowledge_start: "지식 검색 시작",
       rule: "규칙 평가",
       rules: "규칙 평가",
       response: "응답 생성",
-      final: "최종 응답",
+      final: "최종 처리",
+      task: "태스크 실행",
+      task_start: "태스크 시작",
+      handoff: "상담원 전환",
     };
-    return titles[step] ?? "처리 단계";
+    return titles[step] ?? `처리 (${step})`;
   };
 
   const requestPipelineTurnStream = async (
@@ -595,6 +619,7 @@ export function CallTab({
     interruptContext: string | null,
     onTranscript?: (transcript: string) => void,
     onAnswerReady?: (answer: string) => void,
+    traceStartedAt?: number,
   ) => {
     const formData = new FormData();
     formData.append("organization_id", organizationId);
@@ -626,7 +651,7 @@ export function CallTab({
     let finalAnswer = "";
     let shouldEndSession = false;
     let streamConversationId: string | null = null;
-    let lastSseEventAt = performance.now();
+    let lastSseEventAt = traceStartedAt ?? performance.now();
 
     const emitPipelineTrace = (event: VoiceTraceEvent) => {
       const now = performance.now();
@@ -692,7 +717,7 @@ export function CallTab({
         // 서버가 업로드 받은 오디오 처리를 시작한 시점 - "음성 업로드 준비"(전송
         // 직전)와 "음성 인식 완료" 사이에 끼워 넣으면, 그 구간에 숨어있던 네트워크
         // 업로드 시간과 순수 STT 처리 시간을 구분해서 볼 수 있다.
-        emitPipelineTrace({ id: "voice_turn_start", title: "서버 도착", status: "done", detail: "업로드된 음성을 받았습니다." });
+        emitPipelineTrace({ id: "voice_turn_start", title: "서버 도착", status: "done", detail: "업로드된 음성을 받았습니다.", elapsedMs: typeof data.elapsed_ms === "number" ? Math.round(data.elapsed_ms) : undefined });
         return;
       }
 
@@ -700,9 +725,16 @@ export function CallTab({
         transcript = typeof data.text === "string" ? data.text.trim() : "";
         if (transcript) {
           lastTranscriptRef.current = transcript;
-          emitPipelineTrace({ id: "voice_stt", title: "음성 인식", status: "done", detail: transcript });
+          emitPipelineTrace({ id: "voice_stt", title: "음성 인식", status: "done", detail: transcript, elapsedMs: typeof data.elapsed_ms === "number" ? Math.round(data.elapsed_ms) : undefined });
           onTranscript?.(transcript);
-          if (isCurrentPipelineTurn(turnId)) setPipelineStatus("processing");
+          if (isCurrentPipelineTurn(turnId)) {
+            setPipelineStatus("processing");
+            // AI가 생각 중임을 나타내는 pending 메시지 추가
+            setTextMessages((messages) => [
+              ...messages,
+              { id: `agent_stream_${turnId}`, role: "agent", text: "", isPending: true },
+            ]);
+          }
         }
         return;
       }
@@ -710,12 +742,14 @@ export function CallTab({
       if (event === "trace") {
         const step = typeof data.step === "string" ? data.step : "";
         const detail = typeof data.detail === "string" ? data.detail : "";
+        const backendElapsedMs = typeof data.elapsed_ms === "number" ? Math.round(data.elapsed_ms) : undefined;
         emitPipelineTrace({
           id: `voice_${step || "trace"}`,
           title: voiceTraceStepTitle(step),
           status: "done",
           detail,
           items: Array.isArray(data.items) ? data.items : [],
+          elapsedMs: backendElapsedMs,
         });
         return;
       }
@@ -733,6 +767,15 @@ export function CallTab({
 
       if (event === "delta" && typeof data.delta === "string") {
         streamedText += data.delta;
+        if (isCurrentPipelineTurn(turnId)) {
+          setTextMessages((messages) => {
+            const last = messages[messages.length - 1];
+            if (last?.role === "agent" && last.id === `agent_stream_${turnId}`) {
+              return [...messages.slice(0, -1), { ...last, text: streamedText, isPending: false }];
+            }
+            return [...messages, { id: `agent_stream_${turnId}`, role: "agent", text: streamedText, isPending: false }];
+          });
+        }
         return;
       }
 
@@ -1330,11 +1373,13 @@ export function CallTab({
     const totalStartedAt = performance.now();
 
     try {
+      const uploadPreparedAt = performance.now();
       onTrace?.({
         id: "voice_audio_prepare",
         title: "음성 업로드 준비",
         status: "done",
         detail: audioUploadLabel(audioBlob),
+        elapsedMs: Math.round(uploadPreparedAt - totalStartedAt),
       });
 
       const interruptContext = pendingInterruptContextRef.current;
@@ -1352,12 +1397,10 @@ export function CallTab({
           ]);
         },
         (readyAnswer) => {
-          // 답변 텍스트가 정해지는 즉시 알린다 - TTS 재생이 끝나야 오는
-          // voice_answer(done)와 달리, AI가 말하는 동안에도 trace 패널에
-          // 응답 내용이 바로 보이게 한다.
           if (!isCurrentPipelineTurn(turnId)) return;
           onTrace?.({ id: "voice_answer_preview", title: "AI 응답", status: "active", detail: readyAnswer });
         },
+        uploadPreparedAt,
       );
       if (!isCurrentPipelineTurn(turnId)) return;
 
@@ -1367,7 +1410,15 @@ export function CallTab({
 
       lastTranscriptRef.current = transcript;
       lastAnswerRef.current = answer;
-      setTextMessages((messages) => [...messages, { id: `agent_${Date.now()}`, role: "agent", text: answer }]);
+      // delta 스트리밍으로 이미 메시지가 추가됐으므로 최종 텍스트만 확정
+      setTextMessages((messages) => {
+        const last = messages[messages.length - 1];
+        if (last?.id === `agent_stream_${turnId}`) {
+          return [...messages.slice(0, -1), { ...last, text: answer, isPending: false }];
+        }
+        // delta가 없었던 경우 fallback
+        return [...messages, { id: `agent_${turnId}`, role: "agent", text: answer, isPending: false }];
+      });
       onTrace?.({
         id: "voice_answer",
         title: "AI 응답",
@@ -1444,6 +1495,7 @@ export function CallTab({
   // 발화 turn을 시작한다.
   const startListeningRecorder = (stream: MediaStream, options: { startSpeechTurnImmediately?: boolean } = {}) => {
     if (mediaRecorderRef.current?.state === "recording") return;
+    if (stream.getTracks().every((t) => t.readyState === "ended")) return;
 
     const preferredMimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((type) =>
       MediaRecorder.isTypeSupported(type),
@@ -1501,7 +1553,12 @@ export function CallTab({
       }
     };
     mediaRecorderRef.current = nextRecorder;
-    nextRecorder.start(250);
+    try {
+      nextRecorder.start(250);
+    } catch (err) {
+      console.warn("MediaRecorder start 실패:", err);
+      mediaRecorderRef.current = null;
+    }
   };
 
   const startPipelineRecording = (options: { isBargeIn?: boolean } = {}) => {
@@ -1539,79 +1596,97 @@ export function CallTab({
 
   const startPipelineVad = async (stream: MediaStream) => {
     if (vadIntervalRef.current !== null) window.clearInterval(vadIntervalRef.current);
-    startListeningRecorder(stream);
 
     const AudioContextClass = window.AudioContext;
     const audioContext = new AudioContextClass();
-    const source = audioContext.createMediaStreamSource(stream);
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 1024;
-    source.connect(analyser);
     audioContextRef.current = audioContext;
-    analyserRef.current = analyser;
     setPipelineStatus("listening");
+    // Silero VAD가 발화 감지와 오디오 수집을 모두 담당하므로
+    // MediaRecorder 기반 startListeningRecorder는 사용하지 않는다.
 
-    const samples = new Uint8Array(analyser.fftSize);
-    vadIntervalRef.current = window.setInterval(() => {
-      const currentCallStatus = callStatusRef.current;
-      const currentPipelineStatus = pipelineStatusRef.current;
-      if (!isVoiceCallActiveRef.current || currentCallStatus !== "active") return;
+    const { MicVAD } = await import("@ricky0123/vad-web");
 
-      analyser.getByteTimeDomainData(samples);
-      let sum = 0;
-      for (const sample of samples) {
-        const normalized = (sample - 128) / 128;
-        sum += normalized * normalized;
-      }
-      const rms = Math.sqrt(sum / samples.length);
-      const now = performance.now();
+    const vad = await MicVAD.new({
+      getStream: async () => stream,
+      pauseStream: async () => {},
+      resumeStream: async (s) => s,
+      baseAssetPath: "/vad/",
+      onnxWASMBasePath: "/vad/",
+      ortConfig: (ort) => {
+        ort.env.wasm.wasmPaths = "/vad/";
+        ort.env.wasm.numThreads = 1;
+      },
+      positiveSpeechThreshold: 0.5,
+      negativeSpeechThreshold: 0.35,
+      minSpeechMs: 200,
+      preSpeechPadMs: 400,
+      redemptionMs: 1000,
+      onSpeechStart: () => {
+        const currentPipelineStatus = pipelineStatusRef.current;
+        if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active") return;
 
-      if (currentPipelineStatus === "listening") {
-        if (rms >= VAD_START_THRESHOLD) speechFramesRef.current += 1;
-        else speechFramesRef.current = 0;
-        if (speechFramesRef.current >= VAD_START_MIN_FRAMES) {
-          startPipelineRecording();
-          return;
-        }
-
-        // 무음 대기 recorder는 침묵 동안에도 계속 청크를 쌓는다. 사용자가
-        // 한참 후에 말을 시작하면 audioBlob 맨 앞에 긴 무음이 끼어 STT가
-        // 첫 단어를 놓치거나 엉뚱하게 인식한다. 일정 시간 이상 무음이면
-        // recorder를 리프레시해 누적 무음을 짧게 유지한다(앞단어 보존
-        // 효과는 재시작 직후에도 그대로 살아 있다).
-        if (
-          mediaRecorderRef.current?.state === "recording" &&
-          now - recordingStartedAtRef.current >= LISTENING_RECORDER_REFRESH_MS
-        ) {
-          mediaRecorderRef.current.stop();
-        }
-        return;
-      }
-
-      if (currentPipelineStatus === "processing" || currentPipelineStatus === "speaking") {
-        if (rms >= BARGE_IN_START_THRESHOLD) bargeInFramesRef.current += 1;
-        else bargeInFramesRef.current = 0;
-        if (bargeInFramesRef.current >= BARGE_IN_MIN_FRAMES) {
-          bargeInFramesRef.current = 0;
+        if (currentPipelineStatus === "processing" || currentPipelineStatus === "speaking") {
           pendingInterruptContextRef.current = JSON.stringify({
             interrupted_status: currentPipelineStatus,
             previous_user_message: lastTranscriptRef.current,
             previous_assistant_answer: lastAnswerRef.current,
           });
           onTrace?.({ id: "voice_barge_in", title: "사용자 끼어들기", status: "active", detail: "이전 응답을 중단하고 새 발화를 듣습니다." });
-          startPipelineRecording({ isBargeIn: true });
+          interruptPipelineTurn();
         }
-        return;
-      }
+        setPipelineStatus("recording");
+      },
+      onSpeechEnd: (audio: Float32Array) => {
+        if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active") return;
 
-      if (currentPipelineStatus !== "recording") return;
-      if (rms < VAD_STOP_THRESHOLD) {
-        silenceStartedAtRef.current ??= now;
-        if (now - silenceStartedAtRef.current >= VAD_SILENCE_MS) stopPipelineRecording();
-      } else {
-        silenceStartedAtRef.current = null;
+        const sampleRate = 16000;
+        const wavBlob = float32ToWavBlob(audio, sampleRate);
+        const durationSec = (audio.length / sampleRate).toFixed(1);
+
+        onTrace?.({
+          id: "voice_recording",
+          title: "마이크 녹음",
+          status: wavBlob.size >= MIN_AUDIO_BYTES ? "done" : "warning",
+          detail: `${durationSec}초 · ${Math.round(wavBlob.size / 1024)}KB · audio/wav`,
+          elapsedMs: Math.round(parseFloat(durationSec) * 1000),
+        });
+
+        beginPipelineTurn();
+        isSpeechTurnRef.current = true;
+        speechTurnStartedAtRef.current = performance.now();
+
+        const turnId = pipelineTurnIdRef.current;
+        const signal = activeTurnAbortControllerRef.current?.signal;
+        if (signal && wavBlob.size >= MIN_AUDIO_BYTES) {
+          void processRecordedAudio(wavBlob, turnId, signal);
+        } else {
+          setError("녹음된 음성이 너무 짧습니다. 마이크 가까이에서 말씀해 주세요.");
+          setPipelineStatus("listening");
+          schedulePipelineIdleTimeouts();
+        }
+      },
+    });
+
+    vad.start();
+
+    // 기존 recorder 리프레시 로직 유지 (무음 누적 방지)
+    vadIntervalRef.current = window.setInterval(() => {
+      if (!isVoiceCallActiveRef.current || callStatusRef.current !== "active") return;
+      if (
+        pipelineStatusRef.current === "listening" &&
+        mediaRecorderRef.current?.state === "recording" &&
+        performance.now() - recordingStartedAtRef.current >= LISTENING_RECORDER_REFRESH_MS
+      ) {
+        mediaRecorderRef.current.stop();
       }
     }, VAD_INTERVAL_MS);
+
+    // vad 정리를 위해 audioContext 종료 시 같이 멈춤
+    const originalClose = audioContext.close.bind(audioContext);
+    audioContext.close = async () => {
+      vad.destroy();
+      return originalClose();
+    };
   };
 
   const startCall = async () => {
@@ -1793,7 +1868,44 @@ export function CallTab({
     rotateSessionForNextConversation();
   };
 
+  const cleanupTextConversation = () => {
+    if (!isTextCallActive && textMessages.length === 0 && !conversationIdRef.current) return;
+    const endedSessionId = sessionIdRef.current;
+    textAbortControllerRef.current?.abort();
+    textAbortControllerRef.current = null;
+    callStatusRef.current = "ended";
+    setIsTextCallActive(false);
+    setCallStatus("ended");
+    setPipelineStatus("idle");
+    setIsSendingText(false);
+    setTextMessages([]);
+    notifyCallEnded(endedSessionId);
+    rotateSessionForNextConversation();
+  };
+
+  const endTextConversation = () => {
+    if (isVoiceCallActiveRef.current) {
+      endCall();
+      return;
+    }
+    cleanupTextConversation();
+    onTextModeChange?.(false);
+    onExitConversation?.();
+  };
+
+  // 이전 버튼으로 채팅창에서 나갈 때도 대화 종료 처리
+  const prevIsTextModeRef = useRef(isTextMode);
+  useEffect(() => {
+    if (prevIsTextModeRef.current && !isTextMode) {
+      cleanupTextConversation();
+    }
+    prevIsTextModeRef.current = isTextMode;
+  // cleanupTextConversation은 렌더마다 재생성되므로 의존성에서 제외
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTextMode]);
+
   const isCallRunning = isVoiceCallActive && (callStatus === "connecting" || callStatus === "active");
+  const canEndTextConversation = !isCallRunning && (isTextCallActive || textMessages.length > 0);
   const pipelineStatusLabels = {
     idle: "듣는 중입니다...",
     listening: isTextCallActive && !hasMediaStream ? "텍스트 입력을 기다리는 중입니다..." : "듣는 중입니다...",
@@ -1807,9 +1919,15 @@ export function CallTab({
       ? "연결 중입니다..."
       : pipelineStatusLabel
     : "통화를 시작하거나 아래에 메시지를 입력할 수 있습니다.";
+  const showEndButton = isCallRunning || canEndTextConversation;
   const composer = (
-    <div className="absolute bottom-0 left-0 right-0 px-1 pb-1">
-      <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white py-2 pl-5 pr-2 shadow-[0_8px_24px_rgb(0,0,0,0.08)] transition focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-50">
+    <div className="shrink-0 flex items-center gap-2 px-1 pb-1 pt-2">
+      <motion.div
+        layout
+        layoutDependency={showEndButton}
+        transition={{ type: "spring", stiffness: 380, damping: 36 }}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-gray-200 bg-white py-2 pl-5 pr-2 focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-50"
+      >
         <input
           value={textInput}
           onChange={(event) => setTextInput(event.target.value)}
@@ -1827,16 +1945,26 @@ export function CallTab({
         >
           <PaperAirplaneIcon className="h-5 w-5" />
         </button>
-        {isCallRunning && (
-          <button
-            onClick={endCall}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500 text-white transition-colors hover:bg-red-600"
-            aria-label="통화 끊기"
+      </motion.div>
+      <AnimatePresence mode="popLayout">
+        {showEndButton && (
+          <motion.button
+            key="end-btn"
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.7 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            onClick={isCallRunning ? endCall : endTextConversation}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+            aria-label={isCallRunning ? "통화 끊기" : "대화 종료"}
           >
-            <PhoneIcon className="h-5 w-5 rotate-[135deg]" />
-          </button>
+            {isCallRunning
+              ? <PhoneIcon className="h-5 w-5 rotate-[135deg]" />
+              : <XMarkIcon className="h-5 w-5" />
+            }
+          </motion.button>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 
@@ -1853,10 +1981,10 @@ export function CallTab({
       <div
         className={`whitespace-pre-line rounded-[16px] px-3 py-2 text-[13px] font-bold leading-relaxed ${
           message.role === "user"
-            ? "rounded-br-[4px] bg-blue-500 text-white"
+            ? "rounded-br-[4px] bg-blue-500/80 text-white"
             : message.role === "admin"
-              ? "rounded-bl-[4px] bg-emerald-50 text-emerald-900"
-              : "rounded-bl-[4px] bg-gray-100 text-gray-800"
+              ? "rounded-bl-[4px] bg-emerald-50/80 text-emerald-900"
+              : "rounded-bl-[4px] bg-white/70 text-gray-800"
         }`}
       >
         {message.isPending ? (
@@ -1873,7 +2001,7 @@ export function CallTab({
   );
 
   const conversationView = (
-    <div className="relative flex h-full flex-col pb-20">
+    <div className="flex h-full flex-col">
       <div ref={messageListRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto px-1 py-2">
         {textMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center px-8 text-center text-[12px] font-bold leading-relaxed text-gray-400">
@@ -1888,25 +2016,27 @@ export function CallTab({
     </div>
   );
 
+  const hasVoiceMessages = textMessages.length > 0;
+
   const voiceView = (
-    <div className="relative flex h-full flex-col pb-20">
-      {!isCallRunning ? (
+    <div className="flex h-full flex-col">
+      {!isCallRunning && error ? (
         <div className="shrink-0 space-y-3">
-          {error && (
-            <div className="rounded-[14px] bg-red-50 px-3 py-2 text-center text-[11px] font-bold text-red-500">
-              {error}
-            </div>
-          )}
+          <div className="rounded-[14px] bg-red-50 px-3 py-2 text-center text-[11px] font-bold text-red-500">
+            {error}
+          </div>
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 items-center justify-center px-2 py-4">
-        <div className="flex w-full flex-col items-center text-center">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* 오브 + 상태 — 항상 하단 고정 */}
+        <div className="flex flex-col items-center justify-center px-2 py-4">
           <motion.div
             layoutId={enableSharedLayout ? "floating-call-orb" : undefined}
-            transition={orbTransition}
+            animate={{ width: hasVoiceMessages ? 160 : 224, height: hasVoiceMessages ? 160 : 224 }}
+            transition={{ type: "spring", stiffness: 300, damping: 32 }}
             onClick={isCallRunning ? undefined : startCall}
-            className={`relative flex h-56 w-56 items-center justify-center overflow-hidden rounded-full bg-[#40c9f4] shadow-[0_22px_56px_rgb(14,165,233,0.3)] ${
+            className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#40c9f4] shadow-[0_22px_56px_rgb(14,165,233,0.3)] ${
               isCallRunning ? "" : "cursor-pointer hover:scale-[1.02]"
             }`}
             role={isCallRunning ? undefined : "button"}
@@ -1962,6 +2092,23 @@ export function CallTab({
             </AnimatePresence>
           </div>
         </div>
+
+        {/* 메시지가 생기면 오브 위를 덮으며 올라옴 */}
+        <AnimatePresence>
+          {hasVoiceMessages && (
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: "spring", stiffness: 340, damping: 36 }}
+              className="absolute inset-0 flex flex-col justify-end pb-2 pointer-events-none"
+            >
+              <div className="pointer-events-auto space-y-2 overflow-y-auto px-1 pb-1 pt-4">
+                {textMessages.slice(-4).map(renderTextMessage)}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {composer}

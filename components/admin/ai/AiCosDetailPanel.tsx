@@ -189,6 +189,8 @@ function AiPreviewChat({
   const [log, setLog] = useState<LogEntry[]>([]);
   const [voiceLog, setVoiceLog] = useState<LogEntry[]>([]);
   const [callDurationLabel, setCallDurationLabel] = useState<string | null>(null);
+  const [callIsActive, setCallIsActive] = useState(false);
+  const [liveSeconds, setLiveSeconds] = useState(0);
   const [syncedConversationId, setSyncedConversationId] = useState<string | null>(null);
   const [traceSteps, setTraceSteps] = useState<TraceStep[]>([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -211,11 +213,15 @@ function AiPreviewChat({
     async (conversationId?: string | null) => {
       const targetConversationId = conversationId ?? conversationIdRef.current;
       if (!targetConversationId) return;
+      // 턴 진행 중(AI 처리/말하는 중)엔 서버 로그로 덮어쓰지 않는다
+      if (voiceTurnRef.current) return;
 
       try {
         const messages = await fetchConversationMessages(organizationId, targetConversationId);
         conversationIdRef.current = targetConversationId;
         setSyncedConversationId(targetConversationId);
+        // 비동기로 돌아왔을 때 다시 턴이 시작됐으면 건너뛴다
+        if (voiceTurnRef.current) return;
         setVoiceLog(
           mapConversationMessagesToVoiceLog(messages, customerTraceStepsRef.current),
         );
@@ -332,10 +338,14 @@ function AiPreviewChat({
       voiceTurnRef.current = null;
       setVoiceLog([]);
       setCallDurationLabel(null);
+      setCallIsActive(true);
+      setLiveSeconds(0);
       return;
     }
 
     if (event.id === "voice_call_end") {
+      setCallIsActive(false);
+      setLiveSeconds(0);
       setCallDurationLabel(event.detail);
       setVoiceLog((current) => [
         ...current,
@@ -480,9 +490,17 @@ function AiPreviewChat({
     }
   };
 
-  const handleCallDuration = (label: string) => {
-    setCallDurationLabel(`통화 시간 ${label}`);
+  const handleCallDuration = (_label: string) => {
+    // CallTab의 onCallDuration은 더 이상 사용하지 않음 — 직접 타이머로 처리
   };
+
+  useEffect(() => {
+    if (!callIsActive) return;
+    const interval = window.setInterval(() => {
+      setLiveSeconds((s) => s + 1);
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [callIsActive]);
 
   useEffect(() => {
     if (activeTab !== "customer") return;
@@ -822,9 +840,14 @@ function AiPreviewChat({
         )
       ) : previewChannel === "call" ? (
         <div ref={logScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto">
-          {callDurationLabel && (
+          {callIsActive && (
             <div className="rounded-[12px] bg-blue-50 px-3 py-2 text-center text-[11px] font-bold text-blue-600">
-              {callDurationLabel}
+              통화 중 · {String(Math.floor(liveSeconds / 60)).padStart(2, "0")}:{String(liveSeconds % 60).padStart(2, "0")}
+            </div>
+          )}
+          {!callIsActive && callDurationLabel && (
+            <div className="rounded-[12px] bg-gray-100 px-3 py-2 text-center text-[11px] font-bold text-gray-500">
+              통화 종료 · {callDurationLabel}
             </div>
           )}
           {syncedConversationId && (
@@ -908,7 +931,9 @@ function formatChatTime(value: number | Date = Date.now()) {
 const VOICE_TRACE_ORDER: Record<string, number> = {
   voice_recording: 10,
   voice_audio_prepare: 20,
+  voice_turn_start: 25,   // 서버 도착 — STT 전에 와야 함
   voice_stt: 30,
+  voice_barge_in: 35,
   voice_conversation: 40,
   voice_rules: 50,
   voice_rule: 55,
@@ -919,6 +944,7 @@ const VOICE_TRACE_ORDER: Record<string, number> = {
   voice_knowledge: 90,
   voice_response: 100,
   voice_final: 110,
+  voice_answer_preview: 150,
   voice_answer: 200,
   voice_turn: 200,
   voice_failed: 210,

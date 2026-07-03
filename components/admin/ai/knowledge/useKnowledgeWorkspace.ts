@@ -12,6 +12,7 @@ import {
   fetchKnowledgeFolders,
   fetchKnowledgeSources,
   mapKnowledgeStatus,
+  reindexKnowledgeSource,
   updateKnowledgeChunk,
   updateKnowledgeFolder,
   updateKnowledgeSource,
@@ -228,6 +229,23 @@ export function useKnowledgeWorkspace(organizationId: string) {
     throw new Error("본문 내용 수정은 아직 지원되지 않습니다.");
   };
 
+  const handleReindexKnowledge = async (sourceId: string) => {
+    setKnowledge((current) =>
+      current.map((s) => (s.id === sourceId ? { ...s, status: "인덱싱중", rawStatus: "indexing" } : s)),
+    );
+    try {
+      await reindexKnowledgeSource({ organizationId, sourceId });
+      await reloadKnowledge();
+      if (selectedKnowledgeId === sourceId) {
+        const chunks = await fetchKnowledgeChunks({ organizationId, sourceId });
+        setKnowledgeChunks(chunks);
+      }
+    } catch (e) {
+      setKnowledgeError(e instanceof Error ? e.message : "재인덱싱에 실패했습니다.");
+      await reloadKnowledge();
+    }
+  };
+
   const handleCreateFolder = async (input: { name: string; description?: string | null }) => {
     setKnowledgeError(null);
     const created = await createKnowledgeFolder({
@@ -291,6 +309,7 @@ export function useKnowledgeWorkspace(organizationId: string) {
     handleUpdateChunk,
     handleDeleteChunk,
     handleUpdateKnowledgeContent,
+    handleReindexKnowledge,
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,

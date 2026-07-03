@@ -43,6 +43,7 @@ export function KnowledgeWorkspace({ organizationId, user }: { organizationId: s
           onUpload={workspace.handleUploadKnowledge}
           onUpdate={workspace.handleUpdateKnowledge}
           onDelete={workspace.handleDeleteKnowledge}
+          onReindex={workspace.handleReindexKnowledge}
         />
       </div>
 
@@ -60,6 +61,7 @@ export function KnowledgeWorkspace({ organizationId, user }: { organizationId: s
             onUpdateChunk={workspace.handleUpdateChunk}
             onDeleteChunk={workspace.handleDeleteChunk}
             onUpdateContent={workspace.handleUpdateKnowledgeContent}
+            onReindex={workspace.handleReindexKnowledge}
           />
         </>
       )}

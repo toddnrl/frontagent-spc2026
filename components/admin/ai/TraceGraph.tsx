@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, CheckCircle2, Clock, GitBranch } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type TraceStep = {
   id: string;
@@ -262,6 +262,13 @@ export function TraceGraph({
   defaultOpen?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const prevDefaultOpenRef = useRef(defaultOpen);
+  useEffect(() => {
+    if (defaultOpen !== prevDefaultOpenRef.current) {
+      prevDefaultOpenRef.current = defaultOpen;
+      if (defaultOpen) setIsOpen(true);
+    }
+  }, [defaultOpen]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
@@ -283,7 +290,10 @@ export function TraceGraph({
   const turnElapsedMs = steps.find(
     (step) => (step.id === "voice_answer" || step.id === "voice_turn") && step.elapsedMs,
   )?.elapsedMs;
-  const summedElapsedMs = steps.reduce((sum, step) => sum + Math.round(step.elapsedMs ?? 0), 0);
+  // voice_recording은 사용자가 말한 시간이므로 AI 처리 총 시간에서 제외
+  const summedElapsedMs = steps
+    .filter((step) => step.id !== "voice_recording")
+    .reduce((sum, step) => sum + Math.round(step.elapsedMs ?? 0), 0);
   const totalMs = allDone
     ? Math.round(turnElapsedMs ?? (summedElapsedMs > 0 ? summedElapsedMs : 0)) || undefined
     : undefined;

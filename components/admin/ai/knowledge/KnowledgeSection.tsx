@@ -31,6 +31,7 @@ export function KnowledgeSection({
   onUpload,
   onUpdate,
   onDelete,
+  onReindex,
 }: {
   sources: KnowledgeSource[];
   selectedSourceId: string;
@@ -49,6 +50,7 @@ export function KnowledgeSection({
     data: { title?: string; is_referenced?: boolean; status?: string },
   ) => Promise<void>;
   onDelete: (sourceId: string) => Promise<void>;
+  onReindex?: (sourceId: string) => Promise<void>;
 }) {
   const [filter, setFilter] = useState<"전체" | "참조중" | "미참조">("전체");
   const [modal, setModal] = useState<"add" | "edit" | null>(null);
@@ -195,6 +197,7 @@ export function KnowledgeSection({
                   setModal("edit");
                 }}
                 onDelete={() => runSourceMutation(source.id, () => onDelete(source.id))}
+                onReindex={onReindex ? () => runSourceMutation(source.id, () => onReindex(source.id)) : undefined}
               />
             ))}
           </div>
@@ -238,6 +241,7 @@ function KnowledgeRow({
   onToggle,
   onEdit,
   onDelete,
+  onReindex,
 }: {
   key?: Key;
   source: KnowledgeSource;
@@ -247,6 +251,7 @@ function KnowledgeRow({
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => Promise<void>;
+  onReindex?: () => Promise<void>;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const isOn = source.status !== "미참조";
@@ -331,6 +336,19 @@ function KnowledgeRow({
             >
               수정
             </button>
+            {onReindex && (
+              <button
+                onClick={async (event) => {
+                  event.stopPropagation();
+                  setMenuOpen(false);
+                  await onReindex();
+                }}
+                disabled={isIndexing}
+                className="w-full px-4 py-2 text-left text-[13px] font-bold text-blue-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                재인덱싱
+              </button>
+            )}
             <button
               onClick={async (event) => {
                 event.stopPropagation();

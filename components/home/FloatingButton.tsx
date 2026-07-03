@@ -164,6 +164,7 @@ export function FloatingButton() {
             isTextMode={isCallTextMode}
             enableSharedLayout={isOpen && activeTab === "call"}
             onTextModeChange={setIsCallTextMode}
+            onExitConversation={() => setIsCallTextMode(false)}
           />
         </div>
       </div>
@@ -195,7 +196,7 @@ export function FloatingButton() {
     <LayoutGroup id="floating-widget">
       <div
         ref={containerRef}
-        className={`pointer-events-none fixed right-4 bottom-6 flex flex-col items-end sm:right-8 sm:bottom-8 ${isOpen ? "z-[150]" : "z-50"}`}
+        className={`pointer-events-none fixed bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center sm:bottom-8 ${isOpen ? "z-[150]" : "z-50"}`}
       >
         <AnimatePresence initial={false} mode="sync">
           {isOpen ? (
@@ -206,7 +207,7 @@ export function FloatingButton() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0.96 }}
               transition={surfaceTransition}
-              style={{ transformOrigin: "bottom right" }}
+              style={{ transformOrigin: "bottom center" }}
               className="pointer-events-auto fixed inset-0 z-[150] h-full w-full overflow-hidden bg-white shadow-[0_20px_60px_rgb(0,0,0,0.16)] sm:relative sm:inset-auto sm:h-[580px] sm:w-[calc(100vw-32px)] sm:max-w-[420px] sm:rounded-[32px] sm:border sm:border-gray-100"
             >
               {renderPanelBody()}

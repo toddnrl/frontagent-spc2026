@@ -1,9 +1,10 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { Bot, ChevronDown, Search } from "lucide-react";
+import { ChevronDown, LogOut, Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef, useState } from "react";
 import type { OrganizationMembership } from "../../lib/organization";
 import { Avatar } from "./ui";
 
@@ -29,21 +30,17 @@ export function AdminTopBar({
   const pathname = usePathname();
   const activeTabIndex = tabs.findIndex((tab) => pathname.startsWith(tab.href));
   const indicatorIndex = activeTabIndex >= 0 ? activeTabIndex : tabs.length - 1;
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
 
   return (
     <header className="flex h-[70px] items-center justify-between px-5">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-black text-white">
-            <Bot className="h-4 w-4" />
-          </div>
-          <span className="text-[17px] font-semibold">Front Desk</span>
-        </div>
+        <Link href="/" className="flex items-center rounded-full bg-white px-4 py-2 shadow-sm transition-colors hover:bg-gray-50">
+          <span className="text-[17px] font-semibold">Callbee</span>
+        </Link>
         {memberships && memberships.length > 0 && (
           <div className="relative flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-gray-100 text-gray-500">
-              <Bot className="h-4 w-4" />
-            </div>
             <select
               value={selectedOrganizationId ?? ""}
               onChange={(event) => onOrganizationChange?.(event.target.value)}
@@ -83,10 +80,35 @@ export function AdminTopBar({
           <Search className="h-5 w-5" />
           <span className="text-[15px] font-semibold">검색</span>
         </button>
-        <button onClick={onLogout} className="flex h-11 items-center gap-2 rounded-full bg-white px-3 shadow-sm">
-          <Avatar label={user.user_metadata?.name?.[0] ?? user.email?.[0] ?? "U"} />
-          <span className="text-[12px] font-bold text-green-500">●</span>
-        </button>
+        <div ref={avatarRef} className="relative">
+          <button
+            onClick={() => setPopoverOpen((v) => !v)}
+            className="flex h-11 items-center gap-2 rounded-full bg-white px-3 shadow-sm"
+          >
+            <Avatar label={user.user_metadata?.name?.[0] ?? user.email?.[0] ?? "U"} />
+            <span className="text-[12px] font-bold text-green-500">●</span>
+          </button>
+          {popoverOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setPopoverOpen(false)} />
+              <div className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[180px] overflow-hidden rounded-[16px] bg-white py-1.5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+                <div className="border-b border-gray-100 px-4 py-2.5">
+                  <p className="text-[13px] font-bold text-gray-900 truncate">
+                    {user.user_metadata?.name ?? user.email ?? "사용자"}
+                  </p>
+                  <p className="text-[11px] font-medium text-gray-400 truncate">{user.email}</p>
+                </div>
+                <button
+                  onClick={() => { setPopoverOpen(false); onLogout(); }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-semibold text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  로그아웃
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

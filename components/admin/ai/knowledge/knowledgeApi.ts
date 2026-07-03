@@ -319,6 +319,28 @@ export async function deleteKnowledgeSource({
   }
 }
 
+export async function reindexKnowledgeSource({
+  organizationId,
+  sourceId,
+}: {
+  organizationId: string;
+  sourceId: string;
+}): Promise<{ source_id: string; chunks: number; status: string }> {
+  const response = await fetch(
+    `${getAgentApiBaseUrl()}/knowledge/${encodeURIComponent(sourceId)}/reindex?organization_id=${encodeURIComponent(organizationId)}`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await readAgentApiError(response));
+  }
+
+  return response.json();
+}
+
 export async function updateKnowledgeChunk({
   organizationId,
   chunkId,
