@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
 import {
   fetchOrganizationAiSettings,
+  getAgentSettingsKey,
   toAiSettingsForm,
   updateOrganizationAiSettings,
 } from "./settingsApi";
@@ -15,14 +17,34 @@ import type {
 import { defaultOrganizationAiSettingsForm } from "./types";
 
 export function useSettingsWorkspace(organizationId: string) {
+  const swrKey = organizationId ? getAgentSettingsKey(organizationId) : null;
+  const { data, error, isLoading, mutate } = useSWR(swrKey, () => fetchOrganizationAiSettings(organizationId));
+
   const [form, setForm] = useState<OrganizationAiSettingsForm>(defaultOrganizationAiSettingsForm);
   const [options, setOptions] = useState<OrganizationAiSettingsOptions>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const requestIdRef = useRef(0);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+
+  const fetchError =
+    error instanceof Error ? error.message : error ? "AI 설정을 불러오지 못했습니다." : null;
+  const errorMessage = mutationError ?? fetchError;
+
+  useEffect(() => {
+    setHasLoaded(false);
+    setForm(defaultOrganizationAiSettingsForm);
+    setOptions({});
+    setMessage(null);
+    setMutationError(null);
+  }, [organizationId]);
+
+  useEffect(() => {
+    if (!data || hasLoaded) return;
+    setForm(toAiSettingsForm(data.settings));
+    setOptions(data.options ?? {});
+    setHasLoaded(true);
+  }, [data, hasLoaded]);
 
   const derivedOptions = useMemo(
     () => ({
@@ -133,68 +155,50 @@ export function useSettingsWorkspace(organizationId: string) {
   }, []);
 
   const reload = useCallback(async () => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    setIsLoading(true);
-    setError(null);
+    setMutationError(null);
     setMessage(null);
 
-    try {
-      const data = await fetchOrganizationAiSettings(organizationId);
-      if (requestIdRef.current !== requestId) return;
-
-      setForm(toAiSettingsForm(data.settings));
-      setOptions(data.options ?? {});
+    const result = await mutate();
+    if (result) {
+      setForm(toAiSettingsForm(result.settings));
+      setOptions(result.options ?? {});
       setHasLoaded(true);
-    } catch (err) {
-      if (requestIdRef.current === requestId) {
-        setError(err instanceof Error ? err.message : "AI 설정을 불러오지 못했습니다.");
-      }
-    } finally {
-      if (requestIdRef.current === requestId) setIsLoading(false);
     }
-  }, [organizationId]);
-
-  useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      void reload();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timerId);
-      requestIdRef.current += 1;
-    };
-  }, [reload]);
+  }, [mutate]);
 
   const save = useCallback(async () => {
     const validationError = validateAiSettingsForm(form, options);
     if (validationError) {
-      setError(validationError);
+      setMutationError(validationError);
       setMessage(null);
       return;
     }
 
     setIsSaving(true);
-    setError(null);
+    setMutationError(null);
     setMessage(null);
 
     try {
       const updated = await updateOrganizationAiSettings(organizationId, form);
       setForm(toAiSettingsForm(updated));
+      await mutate(
+        (current) => (current ? { ...current, settings: updated } : current),
+        { revalidate: false },
+      );
       setHasLoaded(true);
       setMessage("AI 설정이 저장됐습니다.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "AI 설정 저장에 실패했습니다.");
+      setMutationError(err instanceof Error ? err.message : "AI 설정 저장에 실패했습니다.");
     } finally {
       setIsSaving(false);
     }
-  }, [form, options, organizationId]);
+  }, [form, mutate, options, organizationId]);
 
   return {
     form,
     options,
     ...derivedOptions,
-    error,
+    error: errorMessage,
     message,
     hasLoaded,
     isLoading,

@@ -114,9 +114,17 @@ export default function ScrollSnap() {
         // Already resting at the edge: one more scroll moves to features.
       }
 
-      // Past the last tracked section (e.g. footer): allow free scroll,
-      // but still allow snapping back up into the last section.
-      if (currentIndex === sections.length - 1 && direction > 0 && isAtPageBottom()) {
+      const lastSection = sections[sections.length - 1]
+      const isPastLastSection = window.scrollY > lastSection.offsetTop + lastSection.offsetHeight - window.innerHeight
+
+      // 마지막 섹션 아래(푸터 영역)에서는 free scroll
+      if (currentIndex === sections.length - 1 && direction > 0) {
+        wheelAccumRef.current = 0
+        return
+      }
+
+      // 푸터에서 위로 올릴 때는 free scroll로 마지막 섹션 복귀
+      if (isPastLastSection && direction < 0) {
         wheelAccumRef.current = 0
         return
       }

@@ -1,6 +1,7 @@
 import { ArrowLeft, CheckCircle2, Database, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Button, Toggle } from "../../ui";
+import { Button } from "@/components/ui/Button";
+import { Toggle } from "@/components/ui/Toggle";
 import type {
   TaskEdge,
   TaskFlow,
@@ -12,11 +13,11 @@ import type {
 } from "../types";
 import {
   applyTaskNodeUpdateInputToNode,
-  buildCreateInputFromTaskNode,
+  applyDraftConnectionToNode,
   buildDefaultNodeInput,
-  buildTaskNodeFromCreateInput,
-  buildUpdateInputFromTaskNode,
   buildVisualTaskEdges,
+  buildTaskNodeFromCreateInput,
+  clearDraftConnectionsFromNode,
   defaultTriggerDescription,
   DIAGRAM_BRANCH_NODE_H,
   DIAGRAM_GRID,
@@ -25,9 +26,10 @@ import {
   DIAGRAM_PAD,
   DIAGRAM_TRIGGER_Y,
   getTaskStartNode,
-  isDraftTaskNode,
   isFallbackTaskEdge,
   normalizeLegacyEndTaskNodes,
+  removeNodeKeyReferences,
+  rewriteNodeKeyReferences,
   taskNodeCategories,
   taskNodeDefinitions,
   type TaskNodeType,
@@ -122,12 +124,7 @@ export function TaskBuilderPage({
   error,
   onBack,
   onCreate,
-  onUpdate,
-  onCreateNode,
-  onUpdateNode,
-  onDeleteNode,
-  onUpsertEdge,
-  onClearEdges,
+  onSaveDraft,
 }: {
   flow: TaskFlow | null;
   nodes: TaskNode[];
@@ -136,20 +133,11 @@ export function TaskBuilderPage({
   error: string | null;
   onBack: () => void;
   onCreate: (input: TaskFlowCreateInput) => Promise<TaskFlow>;
-  onUpdate: (flowId: string, data: TaskFlowUpdateInput) => Promise<void>;
-  onCreateNode: (flowId: string, input: TaskNodeCreateInput, sourceNodeKey?: string) => Promise<TaskNode>;
-  onUpdateNode: (flowId: string, nodeId: string, input: TaskNodeUpdateInput) => Promise<void>;
-  onDeleteNode: (flowId: string, nodeId: string) => Promise<void>;
-  onUpsertEdge: (
+  onSaveDraft: (
     flowId: string,
-    sourceNodeKey: string,
-    targetNodeKey: string,
-    options?: { isFailureEdge?: boolean; conditionConfig?: Record<string, unknown>; clearFailureEdges?: boolean },
-  ) => Promise<void>;
-  onClearEdges: (
-    flowId: string,
-    sourceNodeKey: string,
-    options?: { failureOnly?: boolean; primaryOnly?: boolean },
+    draftNodes: TaskNode[],
+    deletedNodeIds: string[],
+    flowInput: TaskFlowUpdateInput,
   ) => Promise<void>;
 }) {
   const [name, setName] = useState(flow?.name ?? "");
@@ -163,9 +151,7 @@ export function TaskBuilderPage({
   const [localError, setLocalError] = useState<string | null>(null);
   const initialNodes = normalizeLegacyEndTaskNodes(nodes);
   const [draftNodes, setDraftNodes] = useState<TaskNode[]>(initialNodes);
-  const [draftEdges, setDraftEdges] = useState<TaskEdge[]>(edges);
   const draftNodesRef = useRef<TaskNode[]>(initialNodes);
-  const draftEdgesRef = useRef<TaskEdge[]>(edges);
   const deletedNodeIdsRef = useRef<string[]>([]);
   const selectedNode = selectedNodeId ? draftNodes.find((node) => node.id === selectedNodeId) ?? null : null;
   const selectedNodeSaveRef = useRef<(() => Promise<boolean>) | null>(null);
@@ -191,9 +177,7 @@ export function TaskBuilderPage({
     setTriggerDescription(flow?.triggerDescription ?? defaultTriggerDescription);
     setIsEnabled(flow?.isEnabled ?? true);
     setDraftNodes(normalizedNodes);
-    setDraftEdges(edges);
     draftNodesRef.current = normalizedNodes;
-    draftEdgesRef.current = edges;
     deletedNodeIdsRef.current = [];
     setSelectedNodeId(null);
     setFocusNodeId(null);
@@ -201,7 +185,7 @@ export function TaskBuilderPage({
     setShowVariablesPanel(false);
   }, [flow?.id, nodes, edges]);
 
-  const visualEdges = buildVisualTaskEdges(draftNodes, draftEdges, flow?.id ?? "");
+  const visualEdges = buildVisualTaskEdges(draftNodes, edges, flow?.id ?? "");
 
   const buildFlowInput = (): TaskFlowCreateInput => ({
     name: name.trim(),
@@ -226,38 +210,7 @@ export function TaskBuilderPage({
     try {
       const input = buildFlowInput();
       if (flow) {
-        const draftNodesSnapshot = [...draftNodesRef.current];
-        const draftEdgesSnapshot = buildVisualTaskEdges(draftNodesRef.current, draftEdgesRef.current, flow.id);
-        const deletedNodeIdsSnapshot = [...deletedNodeIdsRef.current];
-
-        const sourceKeys = Array.from(
-          new Set([
-            ...edges.map((edge) => edge.sourceNodeKey),
-            ...draftEdgesSnapshot.map((edge) => edge.sourceNodeKey),
-          ]),
-        );
-        await Promise.all(sourceKeys.map((sourceNodeKey) => onClearEdges(flow.id, sourceNodeKey)));
-
-        await Promise.all(
-          draftNodesSnapshot.map((draftNode) =>
-            isDraftTaskNode(draftNode)
-              ? onCreateNode(flow.id, buildCreateInputFromTaskNode(draftNode))
-              : onUpdateNode(flow.id, draftNode.id, buildUpdateInputFromTaskNode(draftNode)),
-          ),
-        );
-
-        await Promise.all(deletedNodeIdsSnapshot.map((deletedNodeId) => onDeleteNode(flow.id, deletedNodeId)));
-
-        await Promise.all(
-          draftEdgesSnapshot.map((draftEdge) =>
-            onUpsertEdge(flow.id, draftEdge.sourceNodeKey, draftEdge.targetNodeKey, {
-              isFailureEdge: isFallbackTaskEdge(draftEdge),
-              conditionConfig: draftEdge.conditionConfig,
-            }),
-          ),
-        );
-
-        await onUpdate(flow.id, input);
+        await onSaveDraft(flow.id, [...draftNodesRef.current], [...deletedNodeIdsRef.current], input);
         deletedNodeIdsRef.current = [];
       } else {
         await onCreate(input);
@@ -288,7 +241,13 @@ export function TaskBuilderPage({
     draftNodesRef.current = nextNodes;
     setDraftNodes(nextNodes);
     if (anchorNode) {
-      await handleUpsertEdgeDraft(anchorNode.nodeKey, created.nodeKey, { clearFailureEdges: true });
+      const nextNodes = draftNodesRef.current.map((node) =>
+        node.id === anchorNode.id
+          ? applyDraftConnectionToNode(node, created.nodeKey, { clearFailureEdges: true })
+          : node,
+      );
+      draftNodesRef.current = nextNodes;
+      setDraftNodes(nextNodes);
     }
     setSelectedNodeId(created.id);
     setFocusNodeId(created.id);
@@ -297,18 +256,12 @@ export function TaskBuilderPage({
   const handleUpdateNodeDraft = async (nodeId: string, input: TaskNodeUpdateInput) => {
     setLocalError(null);
     const previousNode = draftNodesRef.current.find((node) => node.id === nodeId) ?? null;
-    const nextNodes = draftNodesRef.current.map((node) =>
+    let nextNodes = draftNodesRef.current.map((node) =>
       node.id === nodeId ? applyTaskNodeUpdateInputToNode(node, input) : node,
     );
     const nextNode = nextNodes.find((node) => node.id === nodeId) ?? null;
     if (previousNode && nextNode && previousNode.nodeKey !== nextNode.nodeKey) {
-      const nextEdges = draftEdgesRef.current.map((edge) => ({
-        ...edge,
-        sourceNodeKey: edge.sourceNodeKey === previousNode.nodeKey ? nextNode.nodeKey : edge.sourceNodeKey,
-        targetNodeKey: edge.targetNodeKey === previousNode.nodeKey ? nextNode.nodeKey : edge.targetNodeKey,
-      }));
-      draftEdgesRef.current = nextEdges;
-      setDraftEdges(nextEdges);
+      nextNodes = rewriteNodeKeyReferences(nextNodes, previousNode.nodeKey, nextNode.nodeKey);
     }
     draftNodesRef.current = nextNodes;
     setDraftNodes(nextNodes);
@@ -319,46 +272,29 @@ export function TaskBuilderPage({
     targetNodeKey: string,
     options?: { isFailureEdge?: boolean; conditionConfig?: Record<string, unknown>; clearFailureEdges?: boolean },
   ) => {
-    const isFailureEdge = options?.isFailureEdge ?? false;
-    const filtered = draftEdgesRef.current.filter((edge) => {
-      if (edge.sourceNodeKey !== sourceNodeKey) return true;
-      if (options?.clearFailureEdges && isFallbackTaskEdge(edge)) return false;
-      return isFallbackTaskEdge(edge) !== isFailureEdge;
-    });
-    const nextEdge: TaskEdge = {
-      id: `draft-${sourceNodeKey}-${isFailureEdge ? "fallback" : "primary"}-${Date.now()}`,
-      flowId: flow?.id ?? "",
-      sourceNodeKey,
-      targetNodeKey,
-      edgeType: isFailureEdge ? "fallback" : "single",
-      conditionType: isFailureEdge ? "fallback" : "always",
-      conditionConfig: options?.conditionConfig ?? {},
-      isFailureEdge,
-      priority: isFailureEdge ? 200 : 100,
-    };
-    const nextEdges = [...filtered, nextEdge];
-    draftEdgesRef.current = nextEdges;
-    setDraftEdges(nextEdges);
+    const nextNodes = draftNodesRef.current.map((node) =>
+      node.nodeKey === sourceNodeKey ? applyDraftConnectionToNode(node, targetNodeKey, options) : node,
+    );
+    draftNodesRef.current = nextNodes;
+    setDraftNodes(nextNodes);
   };
 
   const handleClearEdgesDraft = async (
     sourceNodeKey: string,
     options?: { failureOnly?: boolean; primaryOnly?: boolean },
   ) => {
-    const nextEdges = draftEdgesRef.current.filter((edge) => {
-      if (edge.sourceNodeKey !== sourceNodeKey) return true;
-      if (options?.failureOnly) return !isFallbackTaskEdge(edge);
-      if (options?.primaryOnly) return isFallbackTaskEdge(edge);
-      return false;
-    });
-    draftEdgesRef.current = nextEdges;
-    setDraftEdges(nextEdges);
+    const nextNodes = draftNodesRef.current.map((node) =>
+      node.nodeKey === sourceNodeKey ? clearDraftConnectionsFromNode(node, options) : node,
+    );
+    draftNodesRef.current = nextNodes;
+    setDraftNodes(nextNodes);
   };
 
   const handleAutoLayoutDraft = () => {
-    const nodeMap = new Map<string, TaskNode>(draftNodesRef.current.map((node) => [node.nodeKey, node]));
-    const edgesForLayout = buildVisualTaskEdges(draftNodesRef.current, draftEdgesRef.current, flow?.id ?? "");
-    const firstNode = getTaskStartNode(draftNodesRef.current);
+    const nodes = draftNodesRef.current;
+    const nodeMap = new Map<string, TaskNode>(nodes.map((node) => [node.nodeKey, node]));
+    const edgesForLayout = buildVisualTaskEdges(nodes, edges, flow?.id ?? "");
+    const firstNode = getTaskStartNode(nodes);
     if (!firstNode) return;
 
     const positioned = new Map<string, { x: number; y: number }>();
@@ -384,18 +320,14 @@ export function TaskBuilderPage({
       currentMainKey = primaryEdge && nodeMap.has(primaryEdge.targetNodeKey) ? primaryEdge.targetNodeKey : undefined;
     }
 
-    const mainDepthByKey = new Map<string, number>();
     mainPath.forEach((nodeKey, depth) => {
-      mainDepthByKey.set(nodeKey, depth);
       positioned.set(nodeKey, {
         x: xOfDepth(depth),
         y: yOfLane(0),
       });
     });
 
-    const helperKeys = draftNodesRef.current
-      .map((node) => node.nodeKey)
-      .filter((nodeKey) => !mainPathSet.has(nodeKey));
+    const helperKeys = nodes.map((node) => node.nodeKey).filter((nodeKey) => !mainPathSet.has(nodeKey));
     const helperKeySet = new Set(helperKeys);
     const helperDepthByKey = new Map<string, number>();
     const neighborsByKey = new Map<string, string[]>();
@@ -456,8 +388,10 @@ export function TaskBuilderPage({
         : component.filter((key) => (incomingCountByKey.get(key) ?? 0) === 0);
       const startKeys = roots.length > 0 ? roots : [component[0]];
       const depthQueue: string[] = [];
+      const depthVisited = new Set<string>();
       startKeys.forEach((key, index) => {
         componentDepthByKey.set(key, helperDepthByKey.get(key) ?? helperDepthCursor + index);
+        depthVisited.add(key);
         depthQueue.push(key);
       });
 
@@ -470,11 +404,9 @@ export function TaskBuilderPage({
 
         outgoingEdges.forEach((edge) => {
           const targetKey = edge.targetNodeKey;
-          const nextDepth = currentDepth + 1;
-          const existingDepth = componentDepthByKey.get(targetKey);
-          if (existingDepth === undefined || nextDepth > existingDepth) {
-            componentDepthByKey.set(targetKey, nextDepth);
-          }
+          if (depthVisited.has(targetKey)) return;
+          depthVisited.add(targetKey);
+          componentDepthByKey.set(targetKey, currentDepth + 1);
           depthQueue.push(targetKey);
         });
       }
@@ -498,7 +430,7 @@ export function TaskBuilderPage({
       helperDepthCursor = Math.max(helperDepthCursor, ...Array.from(componentDepthByKey.values())) + 2;
     });
 
-    const nextNodes = draftNodesRef.current.map((node) => {
+    const nextNodes = nodes.map((node) => {
       const position = positioned.get(node.nodeKey);
       if (!position) return node;
       return {
@@ -519,14 +451,12 @@ export function TaskBuilderPage({
       deletedNodeIdsRef.current = nextDeletedIds;
     }
     const nodeToDelete = draftNodesRef.current.find((node) => node.id === nodeId);
-    const nextNodes = draftNodesRef.current.filter((node) => node.id !== nodeId);
-    const nextEdges = draftEdgesRef.current.filter(
-      (edge) => edge.sourceNodeKey !== nodeToDelete?.nodeKey && edge.targetNodeKey !== nodeToDelete?.nodeKey,
-    );
+    let nextNodes = draftNodesRef.current.filter((node) => node.id !== nodeId);
+    if (nodeToDelete) {
+      nextNodes = removeNodeKeyReferences(nextNodes, nodeToDelete.nodeKey);
+    }
     draftNodesRef.current = nextNodes;
-    draftEdgesRef.current = nextEdges;
     setDraftNodes(nextNodes);
-    setDraftEdges(nextEdges);
     setSelectedNodeId(null);
   };
 

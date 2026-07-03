@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import useSWR, { type KeyedMutator } from "swr";
 import type { RuleCreateInput, RuleItem, RuleUpdateInput } from "../types";
-import { createRule, deleteRule, fetchRules, resetBuiltinRule, updateRule } from "./rulesApi";
+import { createRule, deleteRule, fetchRules, getRulesWorkspaceKey, resetBuiltinRule, updateRule } from "./rulesApi";
 
 function mapRuleInput(input: RuleUpdateInput): Partial<RuleItem> {
   return {
@@ -12,50 +13,36 @@ function mapRuleInput(input: RuleUpdateInput): Partial<RuleItem> {
   };
 }
 
+function patchRulesCache(mutate: KeyedMutator<RuleItem[]>, patch: (current: RuleItem[]) => RuleItem[]) {
+  return mutate((current) => (current ? patch(current) : current), { revalidate: false });
+}
+
+function toErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function useRulesWorkspace(organizationId: string) {
-  const [rules, setRules] = useState<RuleItem[]>([]);
-  const [isRulesLoading, setIsRulesLoading] = useState(false);
+  const swrKey = organizationId ? getRulesWorkspaceKey(organizationId) : null;
+  const { data, error, isLoading, mutate } = useSWR(swrKey, () => fetchRules(organizationId));
+
+  const rules = data ?? [];
   const [isRulesMutating, setIsRulesMutating] = useState(false);
-  const [rulesError, setRulesError] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const reloadRules = useCallback(async () => {
-    setIsRulesLoading(true);
-    setRulesError(null);
-
-    try {
-      const nextRules = await fetchRules(organizationId);
-      setRules(nextRules);
-    } catch (error) {
-      setRulesError(error instanceof Error ? error.message : "Rules API 조회 실패");
-    } finally {
-      setIsRulesLoading(false);
-    }
-  }, [organizationId]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadRules() {
-      if (isMounted) await reloadRules();
-    }
-
-    loadRules();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [reloadRules]);
+  const rulesError =
+    mutationError ??
+    (error instanceof Error ? error.message : error ? "Rules API 조회 실패" : null);
 
   const handleCreateRule = async (input: RuleCreateInput) => {
     setIsRulesMutating(true);
-    setRulesError(null);
+    setMutationError(null);
 
     try {
       const created = await createRule({ organizationId, data: input });
-      await reloadRules();
+      await mutate();
       return created;
     } catch (error) {
-      setRulesError(error instanceof Error ? error.message : "규칙 추가 실패");
+      setMutationError(toErrorMessage(error, "규칙 추가 실패"));
       throw error;
     } finally {
       setIsRulesMutating(false);
@@ -63,17 +50,26 @@ export function useRulesWorkspace(organizationId: string) {
   };
 
   const handleUpdateRule = async (ruleId: string, input: RuleUpdateInput) => {
-    const previousRules = rules;
+    const previousRules = data;
     setIsRulesMutating(true);
-    setRulesError(null);
-    setRules((current) => current.map((rule) => (rule.id === ruleId ? { ...rule, ...mapRuleInput(input) } : rule)));
+    setMutationError(null);
+
+    await patchRulesCache(mutate, (current) =>
+      current.map((rule) => (rule.id === ruleId ? { ...rule, ...mapRuleInput(input) } : rule)),
+    );
 
     try {
       const updated = await updateRule({ organizationId, ruleId, data: input });
-      setRules((current) => current.map((rule) => (rule.id === ruleId ? updated : rule)));
+      await patchRulesCache(mutate, (current) =>
+        current.map((rule) => (rule.id === ruleId ? updated : rule)),
+      );
     } catch (error) {
-      setRules(previousRules);
-      setRulesError(error instanceof Error ? error.message : "규칙 수정 실패");
+      if (previousRules) {
+        await mutate(previousRules, { revalidate: false });
+      } else {
+        await mutate();
+      }
+      setMutationError(toErrorMessage(error, "규칙 수정 실패"));
       throw error;
     } finally {
       setIsRulesMutating(false);
@@ -82,13 +78,13 @@ export function useRulesWorkspace(organizationId: string) {
 
   const handleResetBuiltinRule = async (ruleId: string) => {
     setIsRulesMutating(true);
-    setRulesError(null);
+    setMutationError(null);
 
     try {
       const reset = await resetBuiltinRule({ organizationId, ruleId });
-      setRules((current) => current.map((rule) => (rule.id === ruleId ? reset : rule)));
+      await patchRulesCache(mutate, (current) => current.map((rule) => (rule.id === ruleId ? reset : rule)));
     } catch (error) {
-      setRulesError(error instanceof Error ? error.message : "규칙 초기화 실패");
+      setMutationError(toErrorMessage(error, "규칙 초기화 실패"));
       throw error;
     } finally {
       setIsRulesMutating(false);
@@ -97,13 +93,13 @@ export function useRulesWorkspace(organizationId: string) {
 
   const handleDeleteRule = async (ruleId: string) => {
     setIsRulesMutating(true);
-    setRulesError(null);
+    setMutationError(null);
 
     try {
       await deleteRule({ organizationId, ruleId });
-      await reloadRules();
+      await mutate();
     } catch (error) {
-      setRulesError(error instanceof Error ? error.message : "규칙 삭제 실패");
+      setMutationError(toErrorMessage(error, "규칙 삭제 실패"));
       throw error;
     } finally {
       setIsRulesMutating(false);
@@ -112,7 +108,7 @@ export function useRulesWorkspace(organizationId: string) {
 
   return {
     rules,
-    isRulesLoading,
+    isRulesLoading: isLoading,
     isRulesMutating,
     rulesError,
     handleCreateRule,

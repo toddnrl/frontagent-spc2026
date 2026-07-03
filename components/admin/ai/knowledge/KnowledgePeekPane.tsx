@@ -2,7 +2,7 @@
 
 import { Activity, BookOpen, Check, Info, Layers, RefreshCw, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import { PanelSection } from "../../ui";
+import { PanelSection } from "@/components/ui/PanelSection";
 import type { KnowledgeChunk, KnowledgeSource } from "../types";
 
 // source가 바뀔 때 선택된 청크를 초기화해야 하므로, 호출부(KnowledgeWorkspace)에서

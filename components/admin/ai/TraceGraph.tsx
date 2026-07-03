@@ -2,6 +2,8 @@
 
 import { ChevronDown, CheckCircle2, Clock, GitBranch } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { TurnResultDetails } from "./PreviewTurnResultPanel";
+import type { PreviewChatResult } from "./previewChatTypes";
 
 export type TraceStep = {
   id: string;
@@ -55,6 +57,10 @@ function TraceItemRow({ item, stepId }: { item: unknown; stepId: string }) {
 
   if (typeof item === "object" && item !== null) {
     const obj = item as Record<string, unknown>;
+
+    if (stepId === "turn_result") {
+      return <TurnResultDetails result={obj as PreviewChatResult} />;
+    }
 
     if (stepId === "connected") {
       return (
@@ -270,6 +276,16 @@ export function TraceGraph({
     }
   }, [defaultOpen]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!defaultOpen) return;
+    const turnResultStep = steps.find((step) => step.id === "turn_result");
+    if (!turnResultStep) return;
+    setExpandedIds((current) => {
+      if (current.has("turn_result")) return current;
+      return new Set([...current, "turn_result"]);
+    });
+  }, [defaultOpen, steps]);
 
   const toggle = (id: string) => {
     setExpandedIds((current) => {

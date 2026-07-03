@@ -39,8 +39,13 @@
     }
   }
 
-  html, body {
+  html {
+    overscroll-behavior: none;
+  }
+
+  body {
     overflow-x: hidden;
+    overscroll-behavior: none;
   }
 
   body {

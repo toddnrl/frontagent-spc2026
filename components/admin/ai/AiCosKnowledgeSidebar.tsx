@@ -2,7 +2,8 @@
 
 import { FolderOpen, FolderPlus, Pencil, Search, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import { Button, Modal, ModalActions } from "../ui";
+import { Modal, ModalActions } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import type { KnowledgeFolder, KnowledgeSource } from "./types";
 
 type FolderInput = {

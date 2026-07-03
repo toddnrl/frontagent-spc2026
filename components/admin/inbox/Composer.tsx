@@ -1,5 +1,5 @@
 import { ChevronDown, Send, Tag } from "lucide-react";
-import { TabRow } from "../ui/TabRow";
+import { TabRow } from "@/components/ui/TabRow";
 
 export function Composer({
   value,

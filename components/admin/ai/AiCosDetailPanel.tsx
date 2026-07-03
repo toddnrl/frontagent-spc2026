@@ -25,6 +25,8 @@ import { CallTab } from "../../home/floating/CallTab";
 import type { VoiceTraceEvent } from "../../home/floating/CallTab";
 import { TraceGraph } from "./TraceGraph";
 import type { TraceStep } from "./TraceGraph";
+import type { PreviewChatResult, RuleTraceItem } from "./previewChatTypes";
+import { buildTurnResultTraceStep, parsePreviewChatResult } from "./previewChatTypes";
 import type { AiCosSection } from "./types";
 
 const taskItems = [
@@ -171,20 +173,13 @@ function AiPreviewChat({
     resultIntent?: string;
     traceSteps?: TraceStep[];
   };
-  type ChatResponse = {
-    intent: string;
-    message: string | null;
-    applied_rules: RuleTraceItem[];
-    used_knowledge: Array<Record<string, unknown>>;
-    knowledge_context: Array<Record<string, unknown>>;
-  };
 
   const [activeTab, setActiveTab] = useState<"customer" | "log">("customer");
   const [previewChannel, setPreviewChannel] = useState<"chat" | "call">("chat");
   const [input, setInput] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [lastResult, setLastResult] = useState<ChatResponse | null>(null);
+  const [lastResult, setLastResult] = useState<PreviewChatResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [voiceLog, setVoiceLog] = useState<LogEntry[]>([]);
@@ -619,20 +614,23 @@ function AiPreviewChat({
       setLastResult(result);
       const totalElapsedMs = Date.now() - responseEntryId;
       const hasMatchedRules = getRuleNames(result.applied_rules).length > 0;
-      // 실시간 trace steps 그대로 유지 — log entry에 최종 intent만 반영
-      setLog((entries: LogEntry[]) =>
-        updateLogEntry(entries, responseEntryId - 1, {
+      const turnResultStep = buildTurnResultTraceStep(result, totalElapsedMs);
+
+      setLog((entries: LogEntry[]) => {
+        const customerEntry = entries.find((entry) => entry.id === responseEntryId - 1);
+        const nextTraceSteps = [...(customerEntry?.traceSteps ?? []), turnResultStep];
+        const withCustomer = updateLogEntry(entries, responseEntryId - 1, {
           resultIntent: result.intent,
-        }),
-      );
-      setLog((current) =>
-        updateLogEntry(current, responseEntryId, {
+          traceSteps: nextTraceSteps,
+        });
+        return updateLogEntry(withCustomer, responseEntryId, {
           text: result.message ?? "AI 자동응답이 꺼져 있어 관리자 응답을 기다립니다.",
           time: formatChatTime(),
           matchedRules: hasMatchedRules,
-          meta: `intent=${result.intent} · rules=${result.applied_rules.length} · ${formatElapsed(totalElapsedMs)}`,
-        }),
-      );
+          meta: `intent=${result.intent}${result.next_action ? ` · ${result.next_action}` : ""} · rules=${result.applied_rules.length} · ${formatElapsed(totalElapsedMs)}`,
+        });
+      });
+      setTraceSteps((current) => [...current, turnResultStep]);
     } catch (previewError) {
       const message = previewError instanceof Error ? previewError.message : "테스트 실패";
       const totalElapsedMs = Date.now() - responseEntryId;
@@ -901,8 +899,6 @@ function readStreamingString(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-type RuleTraceItem = string | Record<string, unknown>;
-
 function readStreamingRuleArray(value: unknown): RuleTraceItem[] {
   return Array.isArray(value)
     ? value.filter(
@@ -1134,13 +1130,8 @@ async function runRulePreviewChat(
   const contentType = response.headers.get("content-type") ?? "";
 
   if (!contentType.includes("text/event-stream") || !response.body) {
-    return response.json() as Promise<{
-      intent: string;
-      message: string | null;
-      applied_rules: RuleTraceItem[];
-      used_knowledge: Array<Record<string, unknown>>;
-      knowledge_context: Array<Record<string, unknown>>;
-    }>;
+    const json = (await response.json()) as Record<string, unknown>;
+    return parsePreviewChatResult(json);
   }
 
   return parseSsePreviewChat(response.body, callbacks);
@@ -1159,13 +1150,7 @@ async function parseSsePreviewChat(
   let buffer = "";
   let streamedText = "";
   let didStart = false;
-  let finalResult: {
-    intent: string;
-    message: string | null;
-    applied_rules: RuleTraceItem[];
-    used_knowledge: Array<Record<string, unknown>>;
-    knowledge_context: Array<Record<string, unknown>>;
-  } | null = null;
+  let finalResult: PreviewChatResult | null = null;
 
   const handleEvent = (raw: string) => {
     const lines = raw.split(/\r?\n/);
@@ -1207,24 +1192,18 @@ async function parseSsePreviewChat(
     }
 
     if (eventType === "ai_disabled") {
-      finalResult = {
+      finalResult = parsePreviewChatResult({
         intent: "ai_disabled",
         message: readStreamingString(data.message),
-        applied_rules: [],
-        used_knowledge: [],
-        knowledge_context: [],
-      };
+      });
       return;
     }
 
     if (eventType === "result" || eventType === "ai_response_done") {
-      finalResult = {
-        intent: readStreamingString(data.intent) || "unknown",
-        message: readStreamingString(data.message) || streamedText,
-        applied_rules: readStreamingRuleArray(data.applied_rules),
-        used_knowledge: readStreamingObjectArray(data.used_knowledge),
-        knowledge_context: readStreamingObjectArray(data.knowledge_context),
-      };
+      finalResult = parsePreviewChatResult(
+        data,
+        readStreamingString(data.message) || streamedText,
+      );
       return;
     }
 
@@ -1248,13 +1227,7 @@ async function parseSsePreviewChat(
   if (buffer.trim()) handleEvent(buffer);
 
   return (
-    finalResult ?? {
-      intent: "streaming",
-      message: streamedText,
-      applied_rules: [],
-      used_knowledge: [],
-      knowledge_context: [],
-    }
+    finalResult ?? parsePreviewChatResult({ intent: "streaming", message: streamedText })
   );
 }
 

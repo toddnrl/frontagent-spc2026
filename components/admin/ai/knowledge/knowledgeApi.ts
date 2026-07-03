@@ -21,6 +21,8 @@ type KnowledgeFolderRecord = {
   organization_id: string;
   name: string;
   description: string | null;
+  parent_id: string | null;
+  is_active: boolean;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -77,6 +79,8 @@ function mapKnowledgeFolderRecord(record: KnowledgeFolderRecord): KnowledgeFolde
     organizationId: record.organization_id,
     name: record.name,
     description: record.description ?? undefined,
+    parentId: record.parent_id ?? null,
+    isActive: record.is_active ?? true,
     createdAt: record.created_at ?? undefined,
     updatedAt: record.updated_at ?? undefined,
   };
@@ -127,6 +131,15 @@ export async function fetchKnowledgeSources(organizationId: string) {
   return (payload.items ?? []).map((record) => mapKnowledgeRecord(record));
 }
 
+export async function fetchKnowledgeSource(organizationId: string, sourceId: string) {
+  const response = await fetch(
+    `${getAgentApiBaseUrl()}/knowledge/${encodeURIComponent(sourceId)}?organization_id=${encodeURIComponent(organizationId)}`,
+  );
+  if (!response.ok) return null;
+  const record = await readAgentApiJson<KnowledgeRecord>(response);
+  return mapKnowledgeRecord(record);
+}
+
 export async function fetchKnowledgeFolders(organizationId: string) {
   const response = await fetch(`${getAgentApiBaseUrl()}/knowledge/folders?organization_id=${encodeURIComponent(organizationId)}`);
 
@@ -136,6 +149,32 @@ export async function fetchKnowledgeFolders(organizationId: string) {
 
   const payload = await readAgentApiJson<{ items?: KnowledgeFolderRecord[] }>(response);
   return (payload.items ?? []).map(mapKnowledgeFolderRecord);
+}
+
+export type KnowledgeWorkspaceData = {
+  knowledgeFolders: KnowledgeFolder[];
+  knowledge: KnowledgeSource[];
+};
+
+export function getKnowledgeWorkspaceKey(organizationId: string) {
+  return ["knowledge-workspace", organizationId] as const;
+}
+
+export function getKnowledgeChunksKey(organizationId: string, sourceId: string) {
+  return ["knowledge-chunks", organizationId, sourceId] as const;
+}
+
+export async function fetchKnowledgeWorkspaceData(organizationId: string): Promise<KnowledgeWorkspaceData> {
+  const knowledgeFolders = await fetchKnowledgeFolders(organizationId);
+  const rawKnowledge = await fetchKnowledgeSources(organizationId);
+  const knowledge = rawKnowledge.map((source) => ({
+    ...source,
+    folder:
+      knowledgeFolders.find((folder) => folder.id === source.folderId)?.name ??
+      (source.folderId ? "알 수 없는 폴더" : "기본 폴더"),
+  }));
+
+  return { knowledgeFolders, knowledge };
 }
 
 export async function fetchKnowledgeChunks(organizationId: string, sourceId: string) {
@@ -208,10 +247,12 @@ export async function createKnowledgeFolder({
   organizationId,
   name,
   description,
+  parentId,
 }: {
   organizationId: string;
   name: string;
   description?: string | null;
+  parentId?: string | null;
 }) {
   const response = await fetch(`${getAgentApiBaseUrl()}/knowledge/folders`, {
     method: "POST",
@@ -220,6 +261,7 @@ export async function createKnowledgeFolder({
       organization_id: organizationId,
       name,
       description,
+      parent_id: parentId ?? null,
     }),
   });
 
@@ -237,14 +279,19 @@ export async function updateKnowledgeFolder({
 }: {
   organizationId: string;
   folderId: string;
-  data: { name?: string; description?: string | null };
+  data: { name?: string; description?: string | null; parentId?: string | null; isActive?: boolean };
 }) {
   const response = await fetch(
     `${getAgentApiBaseUrl()}/knowledge/folders/${encodeURIComponent(folderId)}?organization_id=${encodeURIComponent(organizationId)}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.parentId !== undefined ? { parent_id: data.parentId } : {}),
+        ...(data.isActive !== undefined ? { is_active: data.isActive } : {}),
+      }),
     },
   );
 

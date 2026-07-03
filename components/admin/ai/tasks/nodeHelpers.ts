@@ -205,6 +205,115 @@ export function buildVisualTaskEdges(nodes: TaskNode[], edges: TaskEdge[], flowI
   return result;
 }
 
+export function buildPersistedTaskEdges(nodes: TaskNode[], flowId: string) {
+  return buildVisualTaskEdges(nodes, [], flowId);
+}
+
+export function rewriteNodeKeyReferences(nodes: TaskNode[], oldKey: string, newKey: string): TaskNode[] {
+  return nodes.map((node) => {
+    const config = { ...node.config };
+    let changed = false;
+    (["next_node_key", "branch_node_key", "fallback_node_key"] as const).forEach((field) => {
+      if (readConfigString(config[field]) === oldKey) {
+        config[field] = newKey;
+        changed = true;
+      }
+    });
+    return changed ? { ...node, config } : node;
+  });
+}
+
+export function removeNodeKeyReferences(nodes: TaskNode[], removedKey: string): TaskNode[] {
+  return nodes.map((node) => {
+    const config = { ...node.config };
+    let changed = false;
+    (["next_node_key", "branch_node_key", "fallback_node_key"] as const).forEach((field) => {
+      if (readConfigString(config[field]) === removedKey) {
+        delete config[field];
+        changed = true;
+      }
+    });
+    return changed ? { ...node, config } : node;
+  });
+}
+
+export function applyDraftConnectionToNode(
+  node: TaskNode,
+  targetNodeKey: string,
+  options?: { isFailureEdge?: boolean; conditionConfig?: Record<string, unknown>; clearFailureEdges?: boolean },
+): TaskNode {
+  const expression =
+    typeof options?.conditionConfig?.expression === "string" ? options.conditionConfig.expression : undefined;
+
+  if (options?.clearFailureEdges) {
+    return {
+      ...node,
+      config: {
+        ...node.config,
+        next_step_mode: "single",
+        next_node_key: targetNodeKey,
+        branch_node_key: undefined,
+        fallback_node_key: undefined,
+        branch_condition: undefined,
+      },
+    };
+  }
+
+  if (options?.isFailureEdge) {
+    return {
+      ...node,
+      config: {
+        ...node.config,
+        next_step_mode: "branch",
+        fallback_node_key: targetNodeKey,
+        ...(expression ? { branch_condition: expression } : {}),
+      },
+    };
+  }
+
+  const mode = readNextStepMode(node.config.next_step_mode);
+  if (mode === "branch") {
+    return {
+      ...node,
+      config: {
+        ...node.config,
+        branch_node_key: targetNodeKey,
+        ...(expression ? { branch_condition: expression } : {}),
+      },
+    };
+  }
+
+  return {
+    ...node,
+    config: {
+      ...node.config,
+      next_step_mode: "single",
+      next_node_key: targetNodeKey,
+    },
+  };
+}
+
+export function clearDraftConnectionsFromNode(
+  node: TaskNode,
+  options?: { failureOnly?: boolean; primaryOnly?: boolean },
+): TaskNode {
+  const config = { ...node.config };
+  if (options?.failureOnly) {
+    delete config.fallback_node_key;
+    return { ...node, config };
+  }
+  if (options?.primaryOnly) {
+    delete config.branch_node_key;
+    delete config.next_node_key;
+    return { ...node, config };
+  }
+  delete config.next_node_key;
+  delete config.branch_node_key;
+  delete config.fallback_node_key;
+  delete config.branch_condition;
+  return { ...node, config };
+}
+
 export function buildTaskNodeFromCreateInput(flowId: string, input: TaskNodeCreateInput): TaskNode {
   return {
     id: `draft-node-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

@@ -8,7 +8,7 @@ import {
   AgentMessage,
   CustomerBubble,
   InternalNote,
-} from "../ui/ChatBubbles";
+} from "@/components/ui/ChatBubbles";
 import { Composer } from "./Composer";
 import { fetchConversationMessages, parseUtcTimestamp, sendAdminMessage } from "./conversationsApi";
 

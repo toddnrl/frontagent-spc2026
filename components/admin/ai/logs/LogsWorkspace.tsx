@@ -1,7 +1,7 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
-import { PageHeader } from "../../ui";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { LogsChannelSidebar } from "./LogsChannelSidebar";
 import { LogsRunDetail } from "./LogsRunDetail";
 import { LogsRunList } from "./LogsRunList";
