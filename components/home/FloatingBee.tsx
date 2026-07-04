@@ -16,6 +16,7 @@ export function FloatingBee() {
           height={300}
           className="w-[11vw] max-w-[200px] min-w-[140px]"
           priority={false}
+          unoptimized
         />
       </div>
     </div>
