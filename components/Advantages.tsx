@@ -5,8 +5,10 @@ import { pageSectionShell } from './sectionLayout'
 const ITEMS = [
   {
     key: 'rules',
+    color: '#c7e2d2',
+    iconColor: '#2d6a4a',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#2d6a4a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
         <line x1="4" y1="22" x2="4" y2="15" />
       </svg>
@@ -16,10 +18,12 @@ const ITEMS = [
   },
   {
     key: 'knowledge',
+    color: '#c9d8f2',
+    iconColor: '#3a5a8a',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#3a5a8a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="5" y="2" width="14" height="14" rx="2" />
-        <rect x="1" y="10" width="14" height="14" rx="2" />
+        <rect x="1" y="8" width="14" height="14" rx="2" />
       </svg>
     ),
     title: '구조화된 지식',
@@ -27,8 +31,10 @@ const ITEMS = [
   },
   {
     key: 'tasks',
+    color: '#efdfb8',
+    iconColor: '#8a6020',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#8a6020" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 2v6h-6" />
         <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
         <path d="M3 22v-6h6" />
@@ -40,8 +46,10 @@ const ITEMS = [
   },
   {
     key: 'evaluation',
+    color: '#ded7f5',
+    iconColor: '#5b3df0',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#5b3df0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 2.1l4 4-4 4" />
         <path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4" />
         <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2" />
@@ -53,22 +61,22 @@ const ITEMS = [
 ]
 
 const sectionClass =
-  'mx-auto flex w-full max-w-[1400px] flex-col justify-center bg-transparent px-10 py-12 text-center max-[860px]:px-5 max-[640px]:px-5'
+  'mx-auto flex w-full max-w-[1400px] flex-col justify-center bg-transparent px-10 py-12 text-center max-[860px]:px-5'
 const titleClass =
-  'mx-auto mt-3.5 mb-6 w-full text-center text-4xl font-extrabold leading-tight tracking-[-0.04em] text-[#0f1118] max-[900px]:text-[28px]'
+  'my-3.5 text-4xl mb-4 font-extrabold leading-tight tracking-[-0.04em] text-[#0f1118] max-[900px]:text-[28px]'
 const leadClass =
-  'mx-auto mb-15 w-full max-w-[660px] text-center text-[17px] leading-[1.75] text-[#5b6b8c]'
+  'mx-auto mb-[18px] w-full max-w-[800px] text-center text-[17px] leading-[1.75] text-[#5b6b8c]'
 
 export default function Advantages() {
   return (
-    <section className={pageSectionShell} id="advantages">
+    <section className={`${pageSectionShell} relative sm:overflow-hidden`} id="advantages">
     <div className={sectionClass}>
-      <h2 className={titleClass}>상담 80%를 해결하는 AI가 가능한 이유</h2>
+      <h2 className={titleClass}>상담 자동화를 현실로 만드는 Call bee의 설계</h2>
       <p className={leadClass}>
-        Callbee AI 상담사가 고객에게 제대로 답변할 수 있는 이유, 복잡하지 않습니다.<br />
-        올바른 규칙, 구조화된 지식, 직접 실행 가능한 태스크, 개선 제안 이 네 가지면 충분합니다.
+        상담 공백을 줄이는 Call bee의 방법, 복잡하지 않습니다.<br />
+        올바른 규칙, 구조화된 지식, 직접 실행 가능한 태스크, 개선 제안을 하나의 상담 솔루션으로 준비합니다.
       </p>
-      <div className="mx-auto grid w-full max-w-[1200px] grid-cols-4 gap-[clamp(16px,2vw,28px)] text-left max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1 max-[640px]:gap-[14px]">
+      <div className="mx-auto mt-18 grid w-full max-w-[1320px] grid-cols-4 gap-[clamp(20px,2.4vw,34px)] text-left max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1 max-[640px]:gap-[14px]">
         {ITEMS.map(item => (
           <a
             key={item.key}
@@ -77,15 +85,18 @@ export default function Advantages() {
               e.preventDefault()
               document.getElementById(item.key)?.scrollIntoView({ behavior: 'smooth' })
             }}
-            className="group flex min-w-0 cursor-pointer flex-col gap-2.5 rounded-2xl border border-[rgba(0,0,0,0.1)] p-[clamp(18px,2vw,24px)] transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(0,0,0,0.18)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+            className="group flex min-w-0 cursor-pointer flex-col gap-3 rounded-2xl border border-[rgba(0,0,0,0.1)] p-[clamp(22px,2.4vw,30px)] transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(0,0,0,0.18)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
           >
-            <div className="mb-0.5 flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border border-[rgba(0,0,0,0.1)] bg-white text-[var(--ink)]">
+            <div
+              className="mb-0.5 flex h-[58px] w-[58px] items-center justify-center rounded-[16px] transition-transform duration-300 group-hover:scale-110"
+              style={{ background: item.color }}
+            >
               {item.icon}
             </div>
-            <div className="flex items-center gap-1 text-base font-bold text-[var(--ink)]">
-              {item.title} <span className="text-lg font-normal text-[var(--ink)]">›</span>
+            <div className="flex items-center gap-1 text-lg font-bold text-[var(--ink)]">
+              {item.title} <span className="text-xl font-normal text-[var(--ink)]">›</span>
             </div>
-            <div className="text-[13.5px] leading-[1.65] text-[var(--muted)]">{item.desc}</div>
+            <div className="text-[15px] leading-[1.7] text-[var(--muted)]">{item.desc}</div>
           </a>
         ))}
       </div>
