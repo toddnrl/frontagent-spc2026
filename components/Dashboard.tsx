@@ -26,17 +26,17 @@ const cx = {
   barTabActive:
     "cursor-pointer rounded-[7px] bg-white px-[14px] py-1 text-[13px] font-semibold text-[#1b1c1e] shadow-[0_1px_2px_rgba(0,0,0,0.08)]",
   barTabs: "mx-auto flex gap-1 rounded-[9px] bg-[#ececee] p-[3px]",
-  bubbleAgent: "text-sm leading-[1.6] text-[#2b2d31]",
+  bubbleAgent: "rounded-[14px] border border-[#e4e4e5] px-[15px] py-[11px] text-sm leading-[1.6] text-[#2b2d31]",
   bubbleCustomer: "max-w-[72%] rounded-[14px] bg-[#f0f1f3] px-[15px] py-[11px] text-sm leading-[1.5]",
   bubbleInternal: "max-w-[80%] rounded-[14px] bg-[#efeafb] px-[15px] py-[11px] text-sm leading-[1.5]",
   cTab: "text-[12.5px] text-[#9aa0a8]",
   cTabActive: "rounded-md bg-[#f0f1f3] px-2 py-[3px] text-[12.5px] font-bold text-[#2b2d31]",
   caret: "text-[11px]",
-  chip: "cursor-pointer rounded-2xl border-0 bg-transparent px-[11px] py-[5px] text-[12.5px] text-[#8b9098]",
-  chipActive: "cursor-pointer rounded-2xl border-0 bg-[#2b2d31] px-[11px] py-[5px] text-[12.5px] font-semibold text-white",
-  chips: "flex gap-1.5 border-b border-[#ededf0] px-[14px] pb-3",
+  chip: "cursor-pointer whitespace-nowrap rounded-2xl border-0 bg-transparent px-[7px] py-[5px] text-[12.5px] text-[#8b9098]",
+  chipActive: "cursor-pointer whitespace-nowrap rounded-2xl border-0 bg-[#2b2d31] px-[11px] py-[5px] text-[12.5px] font-semibold text-white",
+  chips: "flex flex-nowrap gap-1.5 border-b border-[#ededf0] px-[14px] pb-3",
   closeBtn:
-    "cursor-pointer rounded-lg border border-[#dcdee2] bg-white px-[11px] py-[5px] text-[12.5px] font-semibold text-[#4a4f57]",
+    "cursor-pointer rounded-full border-0 bg-[#f0f1f3] px-3 py-[6px] text-[12.5px] font-semibold text-[#4a4f57]",
   colTitle: "m-0 text-[17px] font-extrabold",
   composer: "m-[0_16px_16px] rounded-xl border border-[#dcdee2] px-[14px] py-3",
   composerBar: "flex items-center justify-between",
@@ -48,15 +48,15 @@ const cx = {
   convBody: "min-w-0 flex-1",
   convDot: "text-[#c7ccd3]",
   convItem: "flex cursor-pointer gap-[11px] rounded-[10px] px-2.5 py-3 hover:bg-[#f6f7f8]",
-  convList: "m-0 flex-1 list-none overflow-y-auto p-1.5",
+  convList: "dash-scroll m-0 min-h-0 flex-1 list-none overflow-y-auto p-1.5",
   convName: "text-sm font-bold",
   convTags: "mt-2 flex gap-[5px]",
-  convText: "m-0 overflow-hidden text-ellipsis whitespace-pre-line text-[13px] leading-[1.45] text-[#6a6f76]",
+  convText: "m-0 overflow-hidden text-ellipsis whitespace-pre-line text-[13px] leading-[1.5] text-[#6a6f76]",
   convTime: "ml-auto text-[11.5px] text-[#b6bbc2]",
   convTop: "mb-[3px] flex items-center gap-[5px]",
   count: "text-xs text-[#adb2b9]",
   customerHead: "flex items-center gap-2 px-0 pb-2.5 pt-1.5 text-sm font-bold",
-  detail: "overflow-y-auto border-l border-[#ededf0] px-4 py-[18px]",
+  detail: "dash-scroll min-h-0 overflow-y-auto border-l border-[#ededf0] px-4 py-[18px]",
   detailHeader: "mb-4 flex items-center justify-between",
   detailIcon: "text-[#b6bbc2]",
   divider: "mx-1 my-3 h-px bg-[#ededf0]",
@@ -67,13 +67,12 @@ const cx = {
   eventLink: "text-xs text-[#3b82f6] no-underline",
   events: "m-0 flex list-none flex-col gap-3 p-0",
   eventTitle: "block font-semibold",
-  eyebrow: "m-[0_0_10px] text-center text-[15px] font-bold",
   folderDot: "h-[11px] w-[13px] rounded-sm bg-[#c7ccd3]",
   followAdd: "ml-1 text-[#9aa0a8]",
   followers: "inline-flex items-center gap-[3px]",
   greenDot: "inline-block h-[7px] w-[7px] rounded-full bg-[#22c55e]",
   groupLabel: "m-[16px_0_8px] flex items-center gap-1 px-1 text-[13px] text-[#9aa0a8]",
-  inbox: "overflow-y-auto border-r border-[#ededf0] px-3 py-[18px]",
+  inbox: "dash-scroll min-h-0 overflow-y-auto border-r border-[#ededf0] px-3 py-[18px]",
   inboxTitle: "px-1 pb-3",
   inlineUser: "inline-flex items-center gap-[5px]",
   internalChatLabel: "mb-1 text-[11.5px] text-[#a78bd6]",
@@ -83,12 +82,12 @@ const cx = {
   light: "block h-[11px] w-[11px] rounded-full",
   lights: "flex gap-[7px]",
   link: "text-[#3b82f6] no-underline",
-  list: "flex flex-col overflow-hidden border-r border-[#ededf0]",
+  list: "flex min-h-0 flex-col overflow-hidden border-r border-[#ededf0]",
   listHeader: "flex items-center justify-between px-4 pb-3 pt-[18px]",
   listHeaderIcons: "flex gap-3 text-[15px] text-[#9aa0a8]",
   memberPill: "rounded-md bg-[#f0f1f3] px-2 py-0.5 text-[11px] font-semibold text-[#6a6f76]",
   mention: "font-semibold text-[#6e54c8]",
-  messages: "flex flex-1 flex-col gap-[14px] overflow-y-auto px-[22px] py-5",
+  messages: "dash-scroll flex min-h-0 flex-1 flex-col gap-[14px] overflow-y-auto px-[22px] py-5",
   more: "mt-2 block cursor-pointer border-0 bg-transparent p-1 text-[12.5px] text-[#9aa0a8]",
   msgMeta: "mb-[5px] flex items-center gap-1.5 text-[13px] [&_strong]:font-bold",
   msgRowLeft: "flex items-start gap-2.5",
@@ -112,17 +111,16 @@ const cx = {
   sendBtn: "h-[26px] w-[34px] cursor-pointer rounded-l-[14px] border-0 bg-[#d3d6da] text-white",
   sendCaret:
     "h-[26px] w-[22px] cursor-pointer rounded-r-[14px] border-0 border-l border-[#c2c6cb] bg-[#d3d6da] text-[11px] text-white",
-  sendGroup: "flex items-center gap-2.5",
+  sendGroup: "flex items-center",
   serviceDot: "h-3.5 w-3.5 rounded-full",
   star: "text-[#c7ccd3]",
   swatch: "h-3.5 w-3.5 rounded",
   tag: "whitespace-nowrap rounded-md px-[7px] py-0.5 text-[11px] font-semibold",
   tagWrap: "flex flex-wrap justify-end gap-[5px]",
   teamPill: "rounded-md bg-[#f0f1f3] px-2 py-0.5 text-xs",
-  thread: "flex flex-col overflow-hidden bg-white",
+  thread: "flex min-h-0 flex-col overflow-hidden bg-white",
   threadActions: "flex items-center gap-[14px] text-[15px] text-[#9aa0a8]",
-  threadHeader: "flex items-center justify-between border-b border-[#ededf0] px-[18px] pb-[14px] pt-1",
-  threadTabs: "flex justify-center gap-1 p-2.5",
+  threadHeader: "mx-3 mt-2 mb-3 flex items-center justify-between rounded-2xl border border-[#ededf0] bg-white px-4 py-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)]",
   threadTitle: "flex items-center gap-2 text-[17px] font-extrabold",
   titleBar: "flex h-[46px] items-center gap-4 border-b border-[#ededf0] bg-[#f6f6f7] px-4",
   toolDivider: "h-4 w-px bg-[#e2e4e7]",
@@ -131,7 +129,7 @@ const cx = {
   viewAll: "ml-[42px] self-start cursor-pointer border-0 bg-transparent text-[12.5px] text-[#6a6f76]",
   window:
     "mx-auto w-full overflow-hidden rounded-[14px] border border-[#e6e7ea] bg-white shadow-[0_24px_70px_rgba(30,35,45,0.18)] max-[1100px]:overflow-x-auto",
-  workArea: "grid h-[clamp(500px,66vh,700px)] w-full grid-cols-[48px_200px_230px_1fr_250px] bg-white max-[1100px]:min-w-[1100px]",
+  workArea: "grid h-[clamp(560px,70vh,750px)] w-full grid-cols-[48px_200px_230px_1fr_250px] bg-white max-[1100px]:min-w-[1100px]",
   workspace: "flex items-center gap-1.5 text-[13px] font-semibold",
   wsLogo: "text-[13px]",
   wsNav: "ml-2 text-sm tracking-[4px] text-[#b6bbc2]",
@@ -178,6 +176,7 @@ const I = {
   eye: "M2 10s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5Zm8 2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
   clock: "M10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm0-11v5l3 2",
   gear: "M10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7-3-1.4.6.4 1.5-1 1.5-1.5-.4-1.1 1L11.5 17h-3l-.4-1.6-1.5-.4-1.5 .9-1-1.5L4 12.6 3 12V8l1.6-.6L4 5.9l1-1.5L6.5 5 8 4l.5-1.6h3L12 4l1.5-.4 1.5.9L14 6l1.6.6L17 8v2Z",
+  link: "M8.3 11.7a2.8 2.8 0 0 1 0-4l1.6-1.6a2.8 2.8 0 0 1 4 4l-.9.9M11.7 8.3a2.8 2.8 0 0 1 0 4l-1.6 1.6a2.8 2.8 0 0 1-4-4l.9-.9",
 };
 
 function Icon({ d, size = 18 }: { d: string; size?: number }) {
@@ -429,22 +428,15 @@ function ListColumn() {
 function ThreadColumn() {
   return (
     <section className={cx.thread}>
-      <div className={cx.threadTabs}>
-        <button className={cx.tTabActive}>고객</button>
-        <button className={cx.tTab}>팀</button>
-        <button className={cx.tTab}>AI CoS</button>
-      </div>
-
       <div className={cx.threadHeader}>
         <div className={cx.threadTitle}>
-          <span className={cx.star}>☆</span>
+          <span className={cx.star}><Icon d={I.star} size={16} /></span>
           <strong>박지은</strong>
         </div>
         <div className={cx.threadActions}>
-          <span>෴</span>
-          <span>🔗</span>
+          <span className={cx.aiSpark}>✦</span>
+          <Icon d={I.link} size={15} />
           <span>⋮</span>
-          <span>☾</span>
           <button className={cx.closeBtn}>✓ 종료</button>
         </div>
       </div>
@@ -541,9 +533,8 @@ function ThreadColumn() {
             <span>↬</span>
           </div>
           <div className={cx.sendGroup}>
-            <span className={cx.aiSpark}>✦</span>
             <button className={cx.sendBtn}>▸</button>
-            <button className={cx.sendCaret}>⌄</button>
+            <button className={cx.sendCaret}>▿</button>
           </div>
         </div>
       </div>
@@ -610,7 +601,6 @@ function DetailColumn() {
 
       <p className={cx.groupLabel}>상담 정보 <span className={cx.caret}>⌄</span></p>
       <Row label="우선순위">높음</Row>
-      <Row label="유입 페이지"><a className={cx.link}>https://sadheuk.com</a></Row>
       <Row label="상담 태그">
         <span className={cx.tagWrap}>
           <Tag label="불만" tone="red" />
@@ -623,7 +613,7 @@ function DetailColumn() {
       <Row label="상담 목표">달성</Row>
       <button className={cx.more}>더 보기</button>
 
-      <p className={cx.groupLabel}>이벤트 <span className={cx.caret}>⌄</span></p>
+      <p className={cx.groupLabel}>이벤트 <span className={cx.caret}>▿</span></p>
       <ul className={cx.events}>
         <li className="flex items-start gap-[9px] text-[13px]">
           <span className={cx.eventDot} />
@@ -647,13 +637,12 @@ function DetailColumn() {
 export default function Dashboard() {
   return (
     <section className={pageSectionShellTall} id="dashboard">
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col justify-center bg-transparent px-10 py-12 max-[860px]:px-5">
-      <p className={cx.eyebrow}>채널웍스</p>
-      <h2 className="mx-auto my-3.5 w-full whitespace-nowrap text-center text-4xl font-extrabold leading-tight tracking-[-0.04em] text-[#0f1118] max-[1100px]:whitespace-normal max-[900px]:text-[28px]">
-        카톡, 이메일, 게시판, 전화까지 <b>AI</b>로 상담 채널을 하나로 통합하세요
+    <div className="mx-auto flex w-full max-w-[1400px] min-h-[850px] flex-col justify-center bg-transparent px-10 py-8 max-[860px]:px-5">
+      <h2 className="mx-auto my-2 w-full whitespace-nowrap text-center text-4xl font-extrabold leading-tight tracking-[-0.04em] text-[#0f1118] max-[1100px]:whitespace-normal max-[900px]:text-[28px]">
+        자동화된 상담에 사람의 판단을 더하는 통합 관리 대시보드
       </h2>
-      <p className="mx-auto mb-[18px] w-full max-w-[660px] text-center text-[17px] leading-[1.75] text-[#5b6b8c]">
-        채팅과 동일한 룰, 지식, 액션 구조로 일관성있는 답변을 제공합니다.
+      <p className="mx-auto mb-[30px] w-full max-w-[660px] text-center text-[17px] leading-[1.75] text-[#5b6b8c]">
+        실시간 상담 참여부터 기록, 설정 관리까지 효율적으로 관리하세요.
       </p>
 
       <div className={cx.window}>

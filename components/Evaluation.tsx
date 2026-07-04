@@ -130,7 +130,7 @@ function AnalysisMock() {
       {/* CX Score 추이 카드 */}
       <div className={panelClass}>
         <div className={panelTitleClass}>CX Score 추이</div>
-        <div className="flex h-[120px] gap-2">
+        <div className="flex h-[95px] gap-2">
           <div className="flex flex-col justify-between py-1 text-xs text-[#aeb3ba]">
             <span>5</span>
             <span>4</span>
@@ -254,13 +254,11 @@ export default function EvaluationSection() {
     <div
       className="mx-auto flex w-full max-w-[1400px] flex-col justify-center bg-transparent px-10 py-12 text-[#1b1c1e] max-[860px]:px-5"
     >
-      <p className="mb-3.5 text-center text-[15px] font-bold text-[#1b1c1e]">평가 및 개선</p>
       <h2 className="mx-auto my-3.5 w-full max-w-none text-center text-4xl font-extrabold leading-tight tracking-[-0.04em] text-[#0f1118] max-[900px]:text-[28px]">
         스스로 평가하고 개선점을 찾아주는 AI
       </h2>
       <p className="mx-auto mb-[18px] w-full max-w-none whitespace-nowrap text-center text-[17px] leading-[1.75] text-[#5b6b8c] max-[860px]:whitespace-normal">
-        AI가 제대로 답변할까? 감으로 관리하면 해결률을 높일 수 없습니다. Callbee
-        AI는 스스로 상담 품질을 진단, 제안합니다.
+        AI가 제대로 답변할까? 감으로 관리하면 해결률을 높일 수 없습니다. Call bee는 스스로 상담 품질을 진단, 제안합니다.
       </p>
 
       <div className="mx-auto grid w-full max-w-[1000px] grid-cols-2 grid-rows-[auto_auto_auto] items-stretch gap-x-[50px] gap-y-0 max-[860px]:grid-cols-1">
@@ -271,7 +269,7 @@ export default function EvaluationSection() {
           </div>
           <h3 className={featureTitleClass}>AI 스스로 평가 및 분석</h3>
           <p className={featureDescClass}>
-            Callbee AI는 스스로 상담 품질을 진단, 분석합니다.
+            Call bee는 스스로 상담 품질을 진단, 분석합니다.
           </p>
         </div>
 

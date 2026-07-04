@@ -227,46 +227,19 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
   return (
     <div className="grid min-h-[clamp(380px,40vw,520px)] grid-cols-[1.4fr_0.8fr] items-stretch gap-[clamp(16px,2.5vw,34px)] max-[700px]:min-h-[auto] max-[700px]:grid-cols-1 max-[700px]:gap-4">
       {/* LEFT: panel */}
-      <div className={`relative overflow-hidden flex flex-col justify-center rounded-[clamp(16px,1.8vw,26px)] py-[18px] !shadow-[inset_0_1px_0_rgba(255,255,255,.5)] max-[700px]:rounded-[18px] max-[700px]:py-3.5 ${titleVariant === 'knowledge' ? 'px-[5%]' : titleVariant === 'tasks' ? 'px-[3%]' : 'px-[19%] max-[700px]:px-[6%]'} ${{ rules: '!bg-[linear-gradient(145deg,#cddeff_0%,#b8ccff_50%,#a8bdff_100%)]', knowledge: '!bg-[linear-gradient(145deg,#cce8de_0%,#b6dcc8_50%,#a8d2c0_100%)]', tasks: '!bg-[linear-gradient(145deg,#fde8da_0%,#f9dcd0_50%,#f4d0c4_100%)]'}[titleVariant]}`}>
+      <div
+        className={`relative overflow-hidden flex flex-col justify-center rounded-[clamp(16px,1.8vw,26px)] py-[18px] !shadow-[inset_0_1px_0_rgba(255,255,255,.5)] max-[700px]:rounded-[18px] max-[700px]:py-3.5 ${titleVariant === 'knowledge' ? 'px-[5%]' : titleVariant === 'tasks' ? 'px-[3%]' : 'px-[19%] max-[700px]:px-[6%]'}`}
+        style={{
+          background: {
+            rules: 'linear-gradient(160deg,#dceee1 0%,#c7e2d2 55%,#eaf5ec 100%)',
+            knowledge: 'linear-gradient(160deg,#dde6f7 0%,#c9d8f2 55%,#eef2fb 100%)',
+            tasks: 'linear-gradient(160deg,#f6ecd4 0%,#efdfb8 55%,#faf3e2 100%)',
+          }[titleVariant],
+        }}
+      >
         {/* White diagonal sheen */}
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.38)_0%,rgba(255,255,255,0.12)_28%,transparent_48%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_60%,rgba(255,255,255,0.1)_100%)]" />
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full"
-          viewBox="0 0 400 280"
-          preserveAspectRatio="xMidYMid slice"
-          aria-hidden="true"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {titleVariant === 'rules' ? (
-            <>
-              {/* Geometric shape decorations */}
-              <circle cx="-8" cy="58" r="70" fill="rgba(255,255,255,0.22)" />
-              <path d="M-8,280 L-8,192 Q-8,132 52,132 L52,280 Z" fill="rgba(255,255,255,0.18)" />
-              <path d="M296,2 A58,58 0 0,1 412,2 L412,28 A34,34 0 0,0 296,28 Z" fill="rgba(255,255,255,0.22)" />
-              <circle cx="396" cy="272" r="48" fill="rgba(255,255,255,0.17)" />
-              <g transform="translate(384,142)" fill="rgba(255,255,255,0.17)">
-                <ellipse cx="0"   cy="-20" rx="13" ry="20" />
-                <ellipse cx="20"  cy="0"   rx="20" ry="13" />
-                <ellipse cx="0"   cy="20"  rx="13" ry="20" />
-                <ellipse cx="-20" cy="0"   rx="20" ry="13" />
-              </g>
-            </>
-          ) : titleVariant === 'tasks' ? (
-            <>
-              {/* Simple geometric decorations */}
-              <circle cx="-10" cy="60" r="72" fill="rgba(255,255,255,0.18)" />
-              <path d="M-10,280 L-10,196 Q-10,136 52,136 L52,280 Z" fill="rgba(255,255,255,0.15)" />
-              <path d="M298,0 A60,60 0 0,1 418,0 L418,30 A36,36 0 0,0 298,30 Z" fill="rgba(255,255,255,0.20)" />
-              <circle cx="400" cy="268" r="50" fill="rgba(255,255,255,0.14)" />
-              <g transform="translate(388,148)" fill="rgba(255,255,255,0.14)">
-                <ellipse cx="0"   cy="-20" rx="13" ry="20" />
-                <ellipse cx="20"  cy="0"   rx="20" ry="13" />
-                <ellipse cx="0"   cy="20"  rx="13" ry="20" />
-                <ellipse cx="-20" cy="0"   rx="20" ry="13" />
-              </g>
-            </>
-          ) : (
             <>
               {/* Brain + neural network decoration */}
               <path
@@ -316,9 +289,7 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
               <circle cx="248" cy="192" r="5" fill="rgba(255,255,255,0.22)" />
               <circle cx="192" cy="210" r="5" fill="rgba(255,255,255,0.22)" />
             </>
-          )}
-        </svg>
-        <div className="relative z-10 rounded-[clamp(12px,1.3vw,18px)] !border !border-[rgba(0,0,0,.06)] bg-white !shadow-[0_4px_24px_-8px_rgba(22,25,31,.18)] overflow-hidden w-[90%] mx-auto">
+        <div className="relative z-10 rounded-[clamp(12px,1.3vw,18px)] !border !border-[rgba(0,0,0,.06)] bg-white !shadow-[0_4px_24px_-8px_rgba(22,25,31,.18)] overflow-hidden w-[96%] mx-auto">
           {titleVariant === 'tasks' ? (
             /* tasks 플로우 다이어그램 */
             <div
@@ -332,66 +303,73 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
                 xmlns="http://www.w3.org/2000/svg"
               >
                 <defs>
-                  <marker id="fa" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                    <path d="M0,0.5 L0,5.5 L5,3 z" fill="#9ca3af" />
+                  <marker id="fa-trigger-a" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto">
+                    <path d="M0,1 L0,7 L6.5,4 z" fill="#9ca3af" />
+                  </marker>
+                  <marker id="fa-a-b" markerWidth="10" markerHeight="7" refX="7.5" refY="5" orient="auto">
+                    <path d="M1,0 L0,7 L6.5,4 z" fill="#9ca3af" />
+                  </marker>
+                  <marker id="fa-b-c" markerWidth="5" markerHeight="8" refX="3" refY="3" orient="auto">
+                    <path d="M0,1 L0,7 L6.5,4 z" fill="#9ca3af" />
+                  </marker>
+                  <marker id="fa-b-d" markerWidth="6" markerHeight="10" refX="2" refY="3" orient="auto">
+                    <path d="M2,0 L0,7 L6.5,4 z" fill="#9ca3af" />
                   </marker>
                 </defs>
                 {/* Trigger → A */}
-                <path d="M 86,202 L 86,122" stroke="#9ca3af" strokeWidth="1.5" fill="none" markerEnd="url(#fa)" />
-                <rect x="89" y="157" width="22" height="11" rx="3" fill="#ffffff" />
-                <text x="100" y="165" textAnchor="middle" fontSize="8" fill="#6b7280">시작</text>
+                <path d="M90,192 C90,158 85,155 85,125" fill="none" stroke="#c7ccd6" strokeWidth="1.5" markerEnd="url(#fa-trigger-a)" />
                 {/* A → B */}
-                <path d="M 130,94 C 155,94 155,87 180,87" stroke="#9ca3af" strokeWidth="1.5" fill="none" markerEnd="url(#fa)" />
-                {/* B → C */}
-                <path d="M 300,105 C 320,105 320,66 340,66" stroke="#9ca3af" strokeWidth="1.5" fill="none" markerEnd="url(#fa)" />
-                {/* B → D */}
-                <path d="M 300,124 C 320,123 320,226 340,226" stroke="#9ca3af" strokeWidth="1.5" fill="none" markerEnd="url(#fa)" />
+                <path d="M140,81.6 C158,81.6 155,95.6 173,95.6" fill="none" stroke="#c7ccd6" strokeWidth="1.5" markerEnd="url(#fa-a-b)" />
+                {/* B(조건이 맞으면) → C */}
+                <path d="M310,105.6 C325,105.6 320,72 332,72" fill="none" stroke="#c7ccd6" strokeWidth="1.5" markerEnd="url(#fa-b-c)" />
+                {/* B(일치하지 않으면) → D */}
+                <path d="M310,129.6 C328,129.6 322,232 332,232" fill="none" stroke="#c7ccd6" strokeWidth="1.5" markerEnd="url(#fa-b-d)" />
               </svg>
 
               {/* Trigger node */}
-              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '6%', top: '63%', width: '22%' }}>
+              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '5%', top: '60%', width: '26%' }}>
                 <div className="mb-1.5">
-                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[10px] font-bold text-[#6b7280]">트리거</span>
+                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[12px] font-bold text-[#6b7280]">트리거</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="#4a7cf0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#4a7cf0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                   </span>
-                  <span className="text-[12px] font-bold text-[#1a2035]">예약 조회 플로우</span>
+                  <span className="text-[14px] font-bold text-[#1a2035]">예약 조회 플로우</span>
                 </div>
-                <p className="mt-1 text-[10px] leading-[1.4] text-[#374151]">고객이 기존 예약 조회를 요청할 때 실행</p>
+                <p className="mt-1 text-[12px] leading-[1.4] text-[#374151]">고객이 기존 예약 조회를 요청할 때 실행</p>
               </div>
 
               {/* A node */}
-              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '8%', top: '21%', width: '20%' }}>
+              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '6%', top: '13%', width: '22%', height: '25%' }}>
                 <div className="mb-1.5">
-                  <span className="rounded-full bg-[#ebf0ff] px-1.5 py-0.5 text-[10px] font-bold text-[#4a7cf0]">AI 에이전트</span>
+                  <span className="rounded-full bg-[#ebf0ff] px-1.5 py-0.5 text-[12px] font-bold text-[#4a7cf0]">AI 에이전트</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="#4a7cf0"><path d="M12 2L9 9L2 12L9 15L12 22L15 15L22 12L15 9Z" /></svg>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#4a7cf0"><path d="M12 2L9 9L2 12L9 15L12 22L15 15L22 12L15 9Z" /></svg>
                   </span>
-                  <span className="text-[12px] font-bold text-[#1a2035]">A. 전화번호 질문</span>
+                  <span className="text-[14px] font-bold text-[#1a2035]">A. 전화번호 질문</span>
                 </div>
               </div>
 
               {/* B node */}
-              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '36%', top: '7%', width: '24%' }}>
+              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '34%', top: '8%', width: '28%' }}>
                 <div className="mb-1.5">
-                  <span className="rounded-full bg-[#ebf0ff] px-1.5 py-0.5 text-[10px] font-bold text-[#4a7cf0]">함수 실행</span>
+                  <span className="rounded-full bg-[#ebf0ff] px-1.5 py-0.5 text-[12px] font-bold text-[#4a7cf0]">함수 실행</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="#4a7cf0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#4a7cf0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                   </span>
-                  <span className="text-[12px] font-bold text-[#1a2035]">B. 예약 목록 조회</span>
+                  <span className="text-[14px] font-bold text-[#1a2035]">B. 예약 목록 조회</span>
                 </div>
-                <div className="mt-2 overflow-hidden rounded-lg border border-[#e8edf5] text-[10px]">
-                  <div className="flex items-center justify-between border-b border-[#e8edf5] px-2 py-1">
+                <div className="mt-2 overflow-hidden rounded-lg border border-[#e8edf5] text-[11px]">
+                  <div className="flex items-center justify-between gap-2 whitespace-nowrap border-b border-[#e8edf5] px-2 py-1">
                     <span className="text-[#1f2937]">조건이 맞으면</span>
                     <span className="font-medium text-[#4a7cf0]">예약 조회 완료</span>
                   </div>
-                  <div className="flex items-center justify-between px-2 py-1">
+                  <div className="flex items-center justify-between gap-2 whitespace-nowrap px-2 py-1">
                     <span className="text-[#1f2937]">일치하지 않으면</span>
                     <span className="text-[#6b7280]">미연결</span>
                   </div>
@@ -399,37 +377,37 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
               </div>
 
               {/* C node */}
-              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '68%', top: '5%', width: '24%' }}>
+              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '67%', top: '5%', width: '30%' }}>
                 <div className="mb-1.5 flex gap-1">
-                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[10px] font-bold text-[#6b7280]">안내 메시지</span>
-                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[10px] font-bold text-[#6b7280]">종료</span>
+                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[12px] font-bold text-[#6b7280]">안내 메시지</span>
+                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[12px] font-bold text-[#6b7280]">종료</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4a7cf0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4a7cf0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     </svg>
                   </span>
-                  <span className="text-[12px] font-bold text-[#1a2035]">C. 예약 조회 완료</span>
+                  <span className="text-[14px] font-bold text-[#1a2035]">C. 예약 조회 완료</span>
                 </div>
-                <p className="mt-1.5 text-[10px] leading-[1.4] text-[#374151]">예약 내역을 확인했습니다. 입력하신 전화번호로 조회된 예약이 있습니다.</p>
+                <p className="mt-1.5 text-[12px] leading-[1.4] text-[#374151]">예약 내역을 확인했습니다. 입력하신 전화번호로 조회된 예약이 있습니다.</p>
               </div>
 
               {/* D node */}
-              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '68%', top: '55%', width: '24%' }}>
+              <div className="absolute rounded-xl border border-[#e0e6f0] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.07)]" style={{ left: '67%', top: '55%', width: '30%' }}>
                 <div className="mb-1.5 flex gap-1">
-                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[10px] font-bold text-[#6b7280]">안내 메시지</span>
-                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[10px] font-bold text-[#6b7280]">종료</span>
+                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[12px] font-bold text-[#6b7280]">안내 메시지</span>
+                  <span className="rounded-full bg-[#f0f2f7] px-1.5 py-0.5 text-[12px] font-bold text-[#6b7280]">종료</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4a7cf0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#ebf0ff]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4a7cf0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     </svg>
                   </span>
-                  <span className="text-[12px] font-bold text-[#1a2035]">D. 예약 없음 안내</span>
+                  <span className="text-[14px] font-bold text-[#1a2035]">D. 예약 없음 안내</span>
                 </div>
-                <p className="mt-1.5 text-[10px] leading-[1.4] text-[#374151]">입력하신 전화번호로 조회된 예약을 찾지 못했습니다. 전화번호를 다시 확인해주세요.</p>
+                <p className="mt-1.5 text-[12px] leading-[1.4] text-[#374151]">입력하신 전화번호로 조회된 예약을 찾지 못했습니다. 전화번호를 다시 확인해주세요.</p>
               </div>
             </div>
           ) : titleVariant === 'knowledge' ? (
@@ -504,7 +482,7 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
                       onClick={() => handleToggle(func.key)}
                     />
                     <button
-                      className={`flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[var(--muted)] ${open === func.key ? 'rotate-180' : ''}`}
+                      className={`flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[var(--muted)] transition-transform duration-200 ${open === func.key ? 'rotate-180' : ''}`}
                       aria-expanded={open === func.key}
                       onClick={() => handleOpen(func.key)}
                     >
@@ -513,7 +491,13 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
                       </svg>
                     </button>
                   </div>
-                  {open === func.key && func.content}
+                  <div
+                    className={`grid transition-all duration-300 ease-in-out ${
+                      open === func.key ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                    }`}
+                  >
+                    <div className="overflow-hidden">{func.content}</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -525,7 +509,7 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
       <div
         className={`flex flex-col rounded-[clamp(14px,1.5vw,20px)] !border p-[clamp(14px,1.7vw,24px)] transition-colors duration-300 ${
           mode === 'after'
-            ? '!border-[rgba(206,168,241,0.3)] !bg-[#e7e7fd]'
+            ? '!border-[rgba(49,130,246,0.28)] !bg-[#e9f1fe]'
             : '!border-[rgba(0,0,0,.07)] bg-[#ebebeb]'
         }`}
       >
@@ -536,7 +520,7 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
           {preview.userMsg}
         </div>
         <div
-          className={`${labAClass}${mode === 'after' ? ' !bg-[#f4f6fb]' : ''}${mode === 'before' ? ' !border-[rgba(0,0,0,.09)] !bg-white text-[#5a5a5a]' : ''}${flash ? ' animate-[flash_0.5s]' : ''}`}
+          className={`${labAClass}${mode === 'after' ? ' !border-[rgba(49,130,246,0.16)] !bg-[#f3f8ff]' : ''}${mode === 'before' ? ' !border-[rgba(0,0,0,.09)] !bg-white text-[#5a5a5a]' : ''}${flash ? ' animate-[flash_0.5s]' : ''}`}
         >
           {mode === 'before' ? (
             <>
@@ -545,7 +529,7 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
             </>
           ) : (
             <>
-              <span className="mb-[5px] block text-[11px] font-extrabold text-[#1a1a1a]">{preview.afterLabel}</span>
+              <span className="mb-[5px] block text-[11px] font-extrabold text-[#1d59c9]">{preview.afterLabel}</span>
               {preview.afterContent}
             </>
           )}
@@ -563,7 +547,7 @@ function LabPanel({ mode, onModeChange, titleVariant = 'rules' }: LabPanelProps)
           </button>
           <button
             className={`${modeBtnClass} rounded-[0_10px_10px_0] border border-[var(--line)] bg-white text-[var(--ink)] ${
-              mode === 'after' ? '!border-[#7c3aed] !bg-[#7c3aed] !text-white' : ''
+              mode === 'after' ? '!border-[#3182F6] !bg-[#3182F6] !text-white' : ''
             }`}
             onClick={() => handleMode('after')}
           >
@@ -589,7 +573,7 @@ export default function Section3({ titleVariant = 'rules' }: Section3Props) {
   const leads: Record<string, string> = {
     rules: "기업이 정한 규칙을 반영하고, 그에 맞는 답변을 하도록 설정합니다.",
     knowledge: "필요한 지식을 등록하고, AI가 정확한 정보를 바탕으로 답변하도록 합니다.",
-    tasks: "AI가 수행할 태스크를 정의하고, 일관된 방식으로 처리되도록 설정합니다.",
+    tasks: "AI가 수행할 태스크를 정의하고, 설정된 방식으로 처리되도록 설정합니다.",
   }
 
   const subTitles: Record<string, string> = {
@@ -638,7 +622,7 @@ export default function Section3({ titleVariant = 'rules' }: Section3Props) {
         <div className="absolute -left-24 -top-32 h-[420px] w-[700px] rotate-[22deg] bg-[linear-gradient(to_right,rgba(255,255,255,0.09),transparent)]" />
         <div className="absolute -bottom-32 right-0 h-[360px] w-[580px] rotate-[22deg] bg-[linear-gradient(to_left,rgba(255,255,255,0.06),transparent)]" />
       </div>
-    <div className={`${sectionClass} relative z-10`}>
+    <div className={`${sectionClass}`}>
       <h2 className={sectionTitleClass}>{titles[titleVariant]}</h2>
       <p className={sectionLeadClass}>
         {leads[titleVariant]}
