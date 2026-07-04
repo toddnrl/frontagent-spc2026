@@ -91,6 +91,40 @@
   }
 }
 
+/* FloatingBee.tsx가 animate-[bee-float_4.5s_ease-in-out_infinite] 형태로 직접 참조한다. */
+@keyframes bee-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-18px) rotate(2deg);
+  }
+}
+
+/* Dashboard.tsx의 스크롤 영역: 기본은 스크롤바가 안 보이고, 마우스를 올려 스크롤할 때만 나타난다. */
+.dash-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.dash-scroll:hover {
+  scrollbar-color: #c7ccd3 transparent;
+}
+
+.dash-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dash-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+}
+
+.dash-scroll:hover::-webkit-scrollbar-thumb {
+  background: #c7ccd3;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal {
     opacity: 1 !important;

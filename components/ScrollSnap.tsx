@@ -84,6 +84,20 @@ export default function ScrollSnap() {
         return
       }
 
+      // Inner scrollable areas (e.g. the dashboard mockup panes) keep
+      // their own native scroll as long as they still have room to move
+      // in the wheel's direction; only once they hit their edge does the
+      // event fall through to section snapping.
+      const scrollArea = (e.target as HTMLElement | null)?.closest<HTMLElement>('.dash-scroll')
+      if (scrollArea) {
+        const atTop = scrollArea.scrollTop <= 0
+        const atBottom = scrollArea.scrollTop + scrollArea.clientHeight >= scrollArea.scrollHeight - 1
+        const scrollingDown = e.deltaY > 0
+        if ((scrollingDown && !atBottom) || (!scrollingDown && !atTop)) {
+          return
+        }
+      }
+
       const sections = getSections()
       if (sections.length === 0) return
 
