@@ -1,11 +1,10 @@
-const DEFAULT_AGENT_API_URL = "https://api.light-code.dev";
-const LOCAL_DEV_API_PROXY = "/agent-api";
+const DEFAULT_AGENT_API_URL = "/agent-api";
 
 export function getAgentApiBaseUrl() {
   const configured = process.env.NEXT_PUBLIC_AGENT_API_URL?.trim();
 
   if (!configured) {
-    return process.env.NODE_ENV === "development" ? LOCAL_DEV_API_PROXY : DEFAULT_AGENT_API_URL;
+    return DEFAULT_AGENT_API_URL;
   }
 
   return configured.replace(/\/$/, "");
