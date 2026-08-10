@@ -29,22 +29,30 @@ export async function fetchOrganizationMemberships(
   });
 }
 
-// 로그인 콘솔(백오피스)용: organization_id는 App 최상단에서 organization_members를
-// 조회한 뒤 user.app_metadata에 합성해 내려준다. 멤버십이 없는 과도기에는
-// env 설정값 또는 "org_test"로 폴백해 기존 호출부(string 기대)가 깨지지 않게 한다.
-export function getOrganizationId(user?: User | null) {
+// 로그인 콘솔(백오피스)용: organization_id는 App 최상단(useAdminSession)에서
+// organization_members를 조회한 뒤 user.app_metadata에 합성해 내려준다.
+// 멤버십을 아직 못 찾았거나 env 설정값도 없으면 유효한 UUID가 없다는 뜻이므로
+// 빈 문자열을 반환한다. 호출부는 이 값이 비어있지 않은지 확인한 뒤 API를
+// 호출해야 한다.
+export function getOrganizationId(user?: User | null): string {
   const appMetadataOrgId = readString(user?.app_metadata?.organization_id);
   if (isUuid(appMetadataOrgId)) return appMetadataOrgId;
 
   const configuredOrgId = readString(process.env.NEXT_PUBLIC_AGENT_ORGANIZATION_ID);
-  return configuredOrgId ?? "org_test";
+  if (isUuid(configuredOrgId)) return configuredOrgId;
+
+  return "";
 }
 
 // 비로그인 임베드 위젯(플로팅 챗/콜 버튼)용: 위젯이 어느 회사 사이트에
 // 박혀있는지를 가리키는 정적 식별자라 로그인 유저의 조직과는 무관하다.
-export function getEmbedOrganizationId() {
+// NEXT_PUBLIC_AGENT_ORGANIZATION_ID가 설정되지 않았거나 UUID가 아니면
+// 빈 문자열을 반환한다.
+export function getEmbedOrganizationId(): string {
   const configuredOrgId = readString(process.env.NEXT_PUBLIC_AGENT_ORGANIZATION_ID);
-  return configuredOrgId ?? "org_test";
+  if (isUuid(configuredOrgId)) return configuredOrgId;
+
+  return "";
 }
 
 function readString(value: unknown) {
