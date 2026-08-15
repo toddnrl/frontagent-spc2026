@@ -41,6 +41,10 @@ export function getOrganizationId(user?: User | null): string {
   const configuredOrgId = readString(process.env.NEXT_PUBLIC_AGENT_ORGANIZATION_ID);
   if (isUuid(configuredOrgId)) return configuredOrgId;
 
+  console.warn(
+    "[organization] getOrganizationId: 유효한 organization_id를 찾지 못해 빈 문자열을 반환합니다. " +
+      "호출부가 이 값을 검증 없이 API로 보내면 백엔드에서 422가 발생합니다.",
+  );
   return "";
 }
 
@@ -52,6 +56,10 @@ export function getEmbedOrganizationId(): string {
   const configuredOrgId = readString(process.env.NEXT_PUBLIC_AGENT_ORGANIZATION_ID);
   if (isUuid(configuredOrgId)) return configuredOrgId;
 
+  console.warn(
+    "[organization] getEmbedOrganizationId: NEXT_PUBLIC_AGENT_ORGANIZATION_ID가 설정되지 않았거나 " +
+      "UUID 형식이 아니어서 빈 문자열을 반환합니다. 임베드 위젯 API 호출이 422로 실패할 수 있습니다.",
+  );
   return "";
 }
 
